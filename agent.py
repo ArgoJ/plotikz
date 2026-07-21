@@ -22,7 +22,7 @@ def main():
     
     # 3. Gemini SDK konfigurieren & Modell aufrufen
     genai.configure(api_key=api_key)
-    model = genai.GenerativeModel("gemini-2.5-flash")
+    model = genai.GenerativeModel("gemini-3.6-flash")
 
     # 4. Antwort generieren
     response = model.generate_content(prompt)
