@@ -1,0 +1,20 @@
+\begin{tikzpicture}
+\begin{axis}[
+<%- for option in axis_options %>
+    << option >><% if not loop.last %>,<% endif %>
+<%- endfor %>
+]
+<%- for trace in traces %>
+  <%- if trace.data_type == 'inline' %>
+    << trace.plot_cmd >>[<< trace.options_str >>] coordinates {
+        << trace.inline_coords >>
+    };
+  <%- else %>
+    << trace.plot_cmd >>[<< trace.options_str >>] table [x=<< trace.x_col >>, y=<< trace.y_col >>, col sep=tab] {<< trace.tsv_filename >>};
+  <%- endif %>
+  <%- if trace.legend_entry %>
+    \addlegendentry{<< trace.legend_entry >>}
+  <%- endif %>
+<%- endfor %>
+\end{axis}
+\end{tikzpicture}
