@@ -62,10 +62,13 @@ def main():
         ),
         tools=[write_file, read_file, list_files],
         temperature=0.2,
+        thinking_config=types.ThinkingConfig(
+            thinking_budget=2048,
+        ),
     )
 
     # The chat session handles automatic execution of function tools locally
-    chat = client.chats.create(model="gemini-2.5-flash", config=config)
+    chat = client.chats.create(model="gemini-3.6-flash", config=config)
     response = chat.send_message(prompt)
 
     print("\n--- Agent Response ---")
