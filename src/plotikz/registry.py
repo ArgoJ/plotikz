@@ -7,6 +7,7 @@ from .handlers import (
     ScatterHandler,
     BarHandler,
     HeatmapHandler,
+    ContourHandler,
     GenericHandler,
 )
 from .utils import (
@@ -40,12 +41,14 @@ default_registry = TraceRegistry()
 default_registry.register(ScatterHandler())
 default_registry.register(BarHandler())
 default_registry.register(HeatmapHandler())
+default_registry.register(ContourHandler())
 
 __all__ = [
     "TraceHandler",
     "ScatterHandler",
     "BarHandler",
     "HeatmapHandler",
+    "ContourHandler",
     "GenericHandler",
     "TraceRegistry",
     "default_registry",

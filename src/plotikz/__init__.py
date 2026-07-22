@@ -6,6 +6,7 @@ from .handlers import (
     ScatterHandler,
     BarHandler,
     HeatmapHandler,
+    ContourHandler,
     GenericHandler,
 )
 from .registry import (
@@ -20,6 +21,7 @@ __all__ = [
     "ScatterHandler",
     "BarHandler",
     "HeatmapHandler",
+    "ContourHandler",
     "GenericHandler",
     "TraceRegistry",
     "default_registry",

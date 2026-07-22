@@ -1,20 +1,21 @@
-"""Handler for Heatmap / Contour traces."""
+"""Handler for Contour traces."""
 
 from typing import Dict, Any, Optional
 
 from .base import TraceHandler
-from ..utils import escape_tex, clean_val, format_coord_val
+from ..utils import escape_tex, clean_val, format_coord_val, format_color
 
 
-class HeatmapHandler(TraceHandler):
-    """Handler for Heatmap / Contour traces."""
+class ContourHandler(TraceHandler):
+    """Handler for Contour traces."""
 
     def __init__(self):
         super().__init__()
         self.libraries.add("colormaps")
+        self.libraries.add("contour")
 
     def can_handle(self, trace_type: str) -> bool:
-        return trace_type == "heatmap"
+        return trace_type == "contour"
 
     def process(
         self,
@@ -23,7 +24,33 @@ class HeatmapHandler(TraceHandler):
         tsv_threshold: int = 500,
         tsv_prefix: Optional[str] = None,
     ) -> Dict[str, Any]:
-        options = ["matrix plot", "point meta=explicit"]
+        options = ["contour filled", "point meta=explicit"]
+
+        contours = trace.get("contours", {})
+        showlines = contours.get("showlines", True) if isinstance(contours, dict) else True
+        showlabels = contours.get("showlabels", False) if isinstance(contours, dict) else False
+
+        if showlines:
+            line_dict = trace.get("line") or (contours.get("line") if isinstance(contours, dict) else None)
+            line_color_str = line_dict.get("color") if isinstance(line_dict, dict) else None
+
+            if line_color_str:
+                color_opt, _ = format_color(line_color_str)
+                if color_opt and color_opt.startswith("color="):
+                    raw_color = color_opt[len("color="):]
+                    options.append(f"contour/draw color={raw_color}")
+                else:
+                    options.append("contour/draw color=black")
+            else:
+                options.append("contour/draw color=black")
+        else:
+            options.append("contour/draw color=none")
+
+        if showlabels:
+            options.append("contour/labels=true")
+        else:
+            options.append("contour/labels=false")
+
         raw_z = trace.get("z", [])
         raw_x = trace.get("x")
         raw_y = trace.get("y")

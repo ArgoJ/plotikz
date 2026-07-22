@@ -133,17 +133,48 @@ class TestPlotikzConverter(unittest.TestCase):
         self.assertIn("custom_option", tikz_code)
         self.assertIn(r"\addlegendentry{Custom}", tikz_code)
 
+    def test_contour_conversion(self):
+        fig = go.Figure(
+            data=[
+                go.Contour(
+                    z=[[10, 10.5, 12], [20, 21.5, 23], [30, 31, 33]],
+                    x=[1, 2, 3],
+                    y=[1, 2, 3],
+                )
+            ]
+        )
+        tikz_code = to_tikz(fig, standalone=True)
+        self.assertIn("contour filled", tikz_code)
+        self.assertIn("contour/draw color=black", tikz_code)
+        self.assertIn(r"\usepgfplotslibrary{contour}", tikz_code)
+        self.assertIn(r"\usepgfplotslibrary{colormaps}", tikz_code)
+
+    def test_contour_custom_options(self):
+        fig = go.Figure(
+            data=[
+                go.Contour(
+                    z=[[1, 2], [3, 4]],
+                    contours=dict(showlines=False, showlabels=True),
+                )
+            ]
+        )
+        tikz_code = to_tikz(fig)
+        self.assertIn("contour/draw color=none", tikz_code)
+        self.assertIn("contour/labels=true", tikz_code)
+
     def test_handlers_package_imports(self):
         from plotikz.handlers import (
             TraceHandler,
             ScatterHandler,
             BarHandler,
             HeatmapHandler,
+            ContourHandler,
             GenericHandler,
         )
         self.assertTrue(issubclass(ScatterHandler, TraceHandler))
         self.assertTrue(issubclass(BarHandler, TraceHandler))
         self.assertTrue(issubclass(HeatmapHandler, TraceHandler))
+        self.assertTrue(issubclass(ContourHandler, TraceHandler))
         self.assertTrue(issubclass(GenericHandler, TraceHandler))
 
 
