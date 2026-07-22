@@ -135,7 +135,7 @@ class ContourHandler(TraceHandler):
                     finally:
                         plt.close(fig_c)
 
-                plot_cmd = "\n".join(line_strs)
+                plot_cmd = "\n    ".join(line_strs)
 
             else:
                 # ----- Full contour: render background PNG + overlay contour lines -----
@@ -183,10 +183,8 @@ class ContourHandler(TraceHandler):
                                 line_strs.append(f"\\addplot+[mark=none, color=black, solid, line width=0.8pt] coordinates {{ {pts_str} }};")
                 plt.close(fig_c)
 
-                overlay_code = "\n".join(line_strs) if line_strs else ""
-                plot_cmd = f"\\addplot graphics [xmin={x_min}, xmax={x_max}, ymin={y_min}, ymax={y_max}] {{{png_filename}}};"
-                if overlay_code:
-                    plot_cmd = f"{plot_cmd}\n{overlay_code}"
+                line_strs.insert(0, f"\\addplot graphics [xmin={x_min}, xmax={x_max}, ymin={y_min}, ymax={y_max}] {{{png_filename}}};")
+                plot_cmd = "\n    ".join(line_strs) if line_strs else ""
 
         else:
             plot_cmd = ""

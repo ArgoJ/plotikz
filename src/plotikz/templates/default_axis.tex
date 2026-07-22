@@ -14,7 +14,7 @@
 ]
 <% for trace in block.traces %>
   <% if trace.plot_code %>
-<< trace.plot_code >>
+    << trace.plot_code >>
   <% elif trace.data_type == 'table_macro' %>
     << trace.plot_cmd >>[<< trace.options_str >>] table <% if trace.table_opts %>[<< trace.table_opts >>] <% endif %>{<< trace.table_macro >>};
   <% elif trace.data_type == 'tsv' %>
@@ -47,7 +47,7 @@
 ]
 <% for trace in traces %>
   <% if trace.plot_code %>
-<< trace.plot_code >>
+    << trace.plot_code >>
   <% elif trace.data_type == 'table_macro' %>
     << trace.plot_cmd >>[<< trace.options_str >>] table <% if trace.table_opts %>[<< trace.table_opts >>] <% endif %>{<< trace.table_macro >>};
   <% elif trace.data_type == 'tsv' %>
