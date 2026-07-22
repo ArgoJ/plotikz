@@ -133,6 +133,20 @@ class TestPlotikzConverter(unittest.TestCase):
         self.assertIn("custom_option", tikz_code)
         self.assertIn(r"\addlegendentry{Custom}", tikz_code)
 
+    def test_handlers_package_imports(self):
+        from plotikz.handlers import (
+            TraceHandler,
+            ScatterHandler,
+            BarHandler,
+            HeatmapHandler,
+            GenericHandler,
+        )
+        self.assertTrue(issubclass(ScatterHandler, TraceHandler))
+        self.assertTrue(issubclass(BarHandler, TraceHandler))
+        self.assertTrue(issubclass(HeatmapHandler, TraceHandler))
+        self.assertTrue(issubclass(GenericHandler, TraceHandler))
+
 
 if __name__ == "__main__":
     unittest.main()
+

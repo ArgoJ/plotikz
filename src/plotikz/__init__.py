@@ -1,12 +1,14 @@
 """plotikz: Convert Plotly figures into clean LaTeX/TikZ code using PGFPlots."""
 
 from .converter import PlotlyToTikz, to_tikz
-from .registry import (
+from .handlers import (
     TraceHandler,
     ScatterHandler,
     BarHandler,
     HeatmapHandler,
     GenericHandler,
+)
+from .registry import (
     TraceRegistry,
     default_registry,
 )

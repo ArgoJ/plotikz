@@ -4,7 +4,8 @@ import os
 from typing import Dict, Any, List, Optional, Tuple, Union
 from jinja2 import Environment, PackageLoader, FileSystemLoader, ChoiceLoader
 
-from .registry import TraceRegistry, default_registry, escape_tex
+from .registry import TraceRegistry, default_registry
+from .utils import escape_tex
 
 
 class PlotlyToTikz:
