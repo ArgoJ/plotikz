@@ -39,8 +39,8 @@ jobs:
 
       - name: Agent ausführen
         env:
-          GCP_PROJECT_ID: 'lcil-501610'
-          GCP_LOCATION: 'europe-west3'
+          GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+          GCP_LOCATION: ${{ vars.GCP_LOCATION }}
           AGENT_PROMPT: ${{ inputs.prompt }}
         run: |
           python agent.py
