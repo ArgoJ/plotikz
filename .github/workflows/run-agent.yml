@@ -8,16 +8,24 @@ on:
         required: true
         default: 'Erstelle die Grundstruktur für plotikz'
 
-# Schreibrechte für den Git-Push aktivieren
+# Rechte für Git-Push (contents) UND OIDC-Token (id-token) aktivieren
 permissions:
   contents: write
+  id-token: write
 
 jobs:
   run-agent:
     runs-on: ubuntu-latest
+
     steps:
       - name: Code auschecken
         uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud (Workload Identity Federation)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }} 
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
 
       - name: Python einrichten
         uses: actions/setup-python@v5
@@ -29,14 +37,9 @@ jobs:
           python -m pip install --upgrade pip
           pip install google-genai
 
-      - name: Authenticate to Google Cloud
-        uses: google-github-actions/auth@v2
-        with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
-
       - name: Agent ausführen
         env:
-          GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+          GCP_PROJECT_ID: 'lcil-501610'
           GCP_LOCATION: 'europe-west3'
           AGENT_PROMPT: ${{ inputs.prompt }}
         run: |
