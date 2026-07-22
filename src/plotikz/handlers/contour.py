@@ -63,6 +63,16 @@ class ContourHandler(TraceHandler):
 
         grid_z = []
         if raw_z:
+            # Flat 1D z array (e.g. from bdata decoding) → reshape to 2D
+            if raw_z and not isinstance(raw_z[0], (list, tuple)):
+                n_x = len(raw_x) if raw_x else int(len(raw_z) ** 0.5)
+                n_y = len(raw_y) if raw_y else int(len(raw_z) ** 0.5)
+                if n_x * n_y == len(raw_z):
+                    raw_z = [raw_z[i * n_x:(i + 1) * n_x] for i in range(n_y)]
+                else:
+                    n = int(len(raw_z) ** 0.5)
+                    raw_z = [raw_z[i * n:(i + 1) * n] for i in range(n)]
+
             for row in raw_z:
                 if hasattr(row, "tolist"):
                     row = row.tolist()
@@ -83,61 +93,103 @@ class ContourHandler(TraceHandler):
 
         line_strs = []
 
+        # Detect constraint contour (e.g. ROA boundary) vs full contour plot
+        contours_cfg = trace.get("contours", {})
+        is_constraint = contours_cfg.get("type") == "constraint"
+        constraint_value = contours_cfg.get("value")
+        line_cfg = trace.get("line", {})
+        line_color = line_cfg.get("color", "black")
+        line_dash = line_cfg.get("dash", "solid")
+        line_width = line_cfg.get("width", 1.5)
+
+        # Map Plotly dash styles to TikZ
+        dash_map = {"dash": "dashed", "dot": "dotted", "dashdot": "dash dot"}
+        tikz_dash = dash_map.get(line_dash, "solid")
+
         if num_rows > 0 and num_cols > 0:
             z_arr = np.array([[v if v is not None else 0 for v in row] for row in grid_z], dtype=float)
             x_arr = np.array(raw_x) if raw_x and len(raw_x) == num_cols else np.arange(1, num_cols + 1)
             y_arr = np.array(raw_y) if raw_y and len(raw_y) == num_rows else np.arange(1, num_rows + 1)
             X, Y = np.meshgrid(x_arr, y_arr)
 
-            cs_val = trace.get("colorscale")
-            if isinstance(cs_val, str) and cs_val.lower() != "plotly":
-                try:
-                    cmap = plt.get_cmap(cs_val.lower())
-                except Exception:
-                    cmap = mcolors.LinearSegmentedColormap.from_list("plotly", [c for _, c in PLOTLY_DEFAULT_STOPS])
-            elif isinstance(cs_val, (list, tuple)):
-                try:
-                    colors = [c for _, c in cs_val]
-                    cmap = mcolors.LinearSegmentedColormap.from_list("custom", colors)
-                except Exception:
-                    cmap = mcolors.LinearSegmentedColormap.from_list("plotly", [c for _, c in PLOTLY_DEFAULT_STOPS])
+            if is_constraint:
+                # ----- Constraint contour: draw only a contour line, no background -----
+                levels = [constraint_value] if constraint_value is not None else []
+                if levels:
+                    fig_c, ax_c = plt.subplots()
+                    try:
+                        cs = ax_c.contour(X, Y, z_arr, levels=levels)
+                        if hasattr(cs, "allsegs"):
+                            col_str, _ = format_color(line_color)
+                            col_str = col_str or "color=red"
+                            for level_segs in cs.allsegs:
+                                for seg in level_segs:
+                                    if len(seg) > 0:
+                                        pts_str = " ".join([f"({x:.3f}, {y:.3f})" for x, y in seg])
+                                        line_strs.append(
+                                            f"\\addplot+[mark=none, {col_str}, {tikz_dash}, "
+                                            f"line width={line_width}pt] coordinates {{ {pts_str} }};"
+                                        )
+                    except Exception:
+                        pass
+                    finally:
+                        plt.close(fig_c)
+
+                plot_cmd = "\n".join(line_strs)
+
             else:
-                cmap = mcolors.LinearSegmentedColormap.from_list("plotly", [c for _, c in PLOTLY_DEFAULT_STOPS])
+                # ----- Full contour: render background PNG + overlay contour lines -----
+                cs_val = trace.get("colorscale")
+                if isinstance(cs_val, str) and cs_val.lower() != "plotly":
+                    try:
+                        cmap = plt.get_cmap(cs_val.lower())
+                    except Exception:
+                        cmap = mcolors.LinearSegmentedColormap.from_list("plotly", [c for _, c in PLOTLY_DEFAULT_STOPS])
+                elif isinstance(cs_val, (list, tuple)):
+                    try:
+                        colors = [c for _, c in cs_val]
+                        cmap = mcolors.LinearSegmentedColormap.from_list("custom", colors)
+                    except Exception:
+                        cmap = mcolors.LinearSegmentedColormap.from_list("plotly", [c for _, c in PLOTLY_DEFAULT_STOPS])
+                else:
+                    cmap = mcolors.LinearSegmentedColormap.from_list("plotly", [c for _, c in PLOTLY_DEFAULT_STOPS])
 
-            z_min = float(np.min(z_arr))
-            z_max = float(np.max(z_arr))
+                z_min = float(np.min(z_arr))
+                z_max = float(np.max(z_arr))
 
-            # 1. Render smooth background PNG
-            fig, ax = plt.subplots(figsize=(6, 6))
-            ax.axis("off")
-            fig.subplots_adjust(left=0, right=1, bottom=0, top=1)
-            ax.contourf(X, Y, z_arr, levels=50, cmap=cmap)
+                # Render smooth background PNG
+                fig, ax = plt.subplots(figsize=(6, 6))
+                ax.axis("off")
+                fig.subplots_adjust(left=0, right=1, bottom=0, top=1)
+                ax.contourf(X, Y, z_arr, levels=50, cmap=cmap)
+                ax.set_xlim(x_min, x_max)
+                ax.set_ylim(y_min, y_max)
+                fig.savefig(png_filepath, bbox_inches="tight", pad_inches=0, dpi=300)
+                plt.close(fig)
 
-            ax.set_xlim(x_min, x_max)
-            ax.set_ylim(y_min, y_max)
-            fig.savefig(png_filepath, bbox_inches="tight", pad_inches=0, dpi=300)
-            plt.close(fig)
+                # Extract solid contour level lines matching round ticks
+                ticks = get_nice_ticks(z_min, z_max, max_ticks=5)
+                fig_c, ax_c = plt.subplots()
+                try:
+                    cs = ax_c.contour(X, Y, z_arr, levels=ticks)
+                except Exception:
+                    cs = None
 
-            # 2. Extract solid contour level lines matching round ticks
-            ticks = get_nice_ticks(z_min, z_max, max_ticks=5)
-            fig_c, ax_c = plt.subplots()
-            try:
-                cs = ax_c.contour(X, Y, z_arr, levels=ticks)
-            except Exception:
-                cs = None
+                if cs and hasattr(cs, "allsegs"):
+                    for level_segs in cs.allsegs:
+                        for seg in level_segs:
+                            if len(seg) > 0:
+                                pts_str = " ".join([f"({x:.3f}, {y:.3f})" for x, y in seg])
+                                line_strs.append(f"\\addplot+[mark=none, color=black, solid, line width=0.8pt] coordinates {{ {pts_str} }};")
+                plt.close(fig_c)
 
-            if cs and hasattr(cs, "allsegs"):
-                for level_segs in cs.allsegs:
-                    for seg in level_segs:
-                        if len(seg) > 0:
-                            pts_str = " ".join([f"({x:.3f}, {y:.3f})" for x, y in seg])
-                            line_strs.append(f"\\addplot+[mark=none, color=black, solid, line width=0.8pt] coordinates {{ {pts_str} }};")
-            plt.close(fig_c)
+                overlay_code = "\n".join(line_strs) if line_strs else ""
+                plot_cmd = f"\\addplot graphics [xmin={x_min}, xmax={x_max}, ymin={y_min}, ymax={y_max}] {{{png_filename}}};"
+                if overlay_code:
+                    plot_cmd = f"{plot_cmd}\n{overlay_code}"
 
-        overlay_code = "\n".join(line_strs) if line_strs else ""
-        plot_cmd = f"\\addplot graphics [xmin={x_min}, xmax={x_max}, ymin={y_min}, ymax={y_max}] {{{png_filename}}};"
-        if overlay_code:
-            plot_cmd = f"{plot_cmd}\n{overlay_code}"
+        else:
+            plot_cmd = ""
 
         name = trace.get("name")
         showlegend = trace.get("showlegend", False)
@@ -158,3 +210,4 @@ class ContourHandler(TraceHandler):
             "x_col": "x",
             "y_col": "y",
         }
+

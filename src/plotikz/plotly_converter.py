@@ -77,6 +77,14 @@ class PlotlyToTikz:
             traces_data, tsv_threshold=tsv_threshold, tsv_prefix=tsv_prefix, base_dir=base_dir
         )
 
+        # Ensure contour background images are drawn first (below scatter traces)
+        def _sort_key(t):
+            code = t.get("plot_code", "")
+            if "\\addplot graphics" in code:
+                return 0
+            return 1
+        processed_traces.sort(key=_sort_key)
+
         # Detect subplots and layout annotations
         subplot_groups, is_shared_x = self._detect_subplots(processed_traces, layout_data)
         annotations_list = self._extract_annotations(layout_data)
