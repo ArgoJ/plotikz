@@ -35,12 +35,9 @@ def list_files(directory: str = ".") -> str:
 
 
 def main():
-    api_key = os.environ.get("GEMINI_API_KEY")
+    project_id = os.environ.get("GCP_PROJECT_ID")
+    location = os.environ.get("GCP_LOCATION", "europe-west3") # z.B. europe-west3 oder us-central1
     prompt = os.environ.get("AGENT_PROMPT")
-
-    if not api_key:
-        print("Error: GEMINI_API_KEY environment variable is missing!", file=sys.stderr)
-        sys.exit(1)
 
     if not prompt and len(sys.argv) > 1:
         prompt = " ".join(sys.argv[1:])
@@ -50,10 +47,13 @@ def main():
 
     print("--- Starting Gemini Agent (google.genai) ---")
 
-    # Initialize client using the google.genai SDK
-    client = genai.Client(api_key=api_key)
+    # Client für Vertex AI
+    client = genai.Client(
+        vertexai=True,
+        project=project_id,
+        location=location
+    )
 
-    # Configure system instructions and local tool definitions
     config = types.GenerateContentConfig(
         system_instruction=(
             "You are an autonomous software developer working on the Python package 'plotikz'. "
@@ -62,12 +62,9 @@ def main():
         ),
         tools=[write_file, read_file, list_files],
         temperature=0.2,
-        thinking_config=types.ThinkingConfig(
-            thinking_budget=2048,
-        ),
+        thinking_config=types.ThinkingConfig(thinking_budget=2048)
     )
 
-    # The chat session handles automatic execution of function tools locally
     chat = client.chats.create(model="gemini-3.6-flash", config=config)
     response = chat.send_message(prompt)
 
