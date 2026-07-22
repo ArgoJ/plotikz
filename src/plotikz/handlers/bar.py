@@ -18,6 +18,7 @@ class BarHandler(TraceHandler):
         trace_index: int,
         tsv_threshold: int = 500,
         tsv_prefix: Optional[str] = None,
+        base_dir: Optional[str] = None,
     ) -> Dict[str, Any]:
         options = ["ybar"]
         orientation = trace.get("orientation", "v")
@@ -30,9 +31,13 @@ class BarHandler(TraceHandler):
             col_opt, opacity = format_color(color_str)
             if col_opt:
                 fill_opt = col_opt.replace("color=", "fill=")
+                draw_opt = col_opt.replace("color=", "draw=")
                 options.append(fill_opt)
+                options.append(draw_opt)
             if opacity is not None and opacity < 1.0:
                 options.append(f"fill opacity={opacity}")
+        else:
+            options.append("draw=none")
 
         raw_x = trace.get("x", [])
         raw_y = trace.get("y", [])
@@ -57,11 +62,14 @@ class BarHandler(TraceHandler):
             tsv_filename = f"{prefix}_trace_{trace_index}.tsv"
             lines = ["x\ty"] + [f"{x}\t{y}" for x, y in coords]
             tsv_content = "\n".join(lines)
+            table_content = ""
             inline_coords = ""
         else:
-            data_type = "inline"
+            data_type = "table_macro"
             tsv_filename = ""
             tsv_content = ""
+            lines = ["x y"] + [f"{x} {y}" for x, y in coords]
+            table_content = "\n".join(lines)
             inline_coords = " ".join([f"({x}, {y})" for x, y in coords])
 
         name = trace.get("name")
@@ -73,6 +81,7 @@ class BarHandler(TraceHandler):
             "options": options,
             "options_str": ", ".join(options),
             "data_type": data_type,
+            "table_content": table_content,
             "inline_coords": inline_coords,
             "tsv_filename": tsv_filename,
             "tsv_content": tsv_content,

@@ -38,7 +38,8 @@ class TestPlotikzConverter(unittest.TestCase):
         self.assertIn("dashed", tikz_code)
         self.assertIn("line width=2pt", tikz_code)
         self.assertIn("color={rgb,255:red,255;green,0;blue,0}", tikz_code)
-        self.assertIn("(1, 4) (2, 5) (3, 6)", tikz_code)
+        self.assertIn(r"\pgfplotstableread", tikz_code)
+        self.assertIn("    1 4\n    2 5\n    3 6", tikz_code)
         self.assertIn(r"\addlegendentry{Test Line}", tikz_code)
 
     def test_standalone_mode(self):
@@ -81,7 +82,8 @@ class TestPlotikzConverter(unittest.TestCase):
         tikz_code = to_tikz(fig_dict)
         self.assertIn("only marks", tikz_code)
         self.assertIn("title={Dict Figure}", tikz_code)
-        self.assertIn("(10, 30) (20, 40)", tikz_code)
+        self.assertIn(r"\pgfplotstableread", tikz_code)
+        self.assertIn("    10 30\n    20 40", tikz_code)
 
     def test_bar_chart_conversion(self):
         fig = go.Figure(data=[go.Bar(x=[1, 2, 3], y=[10, 20, 30], name="Bar Trace")])
@@ -144,10 +146,8 @@ class TestPlotikzConverter(unittest.TestCase):
             ]
         )
         tikz_code = to_tikz(fig, standalone=True)
-        self.assertIn("contour filled", tikz_code)
-        self.assertIn("contour/draw color=black", tikz_code)
-        self.assertIn(r"\usepgfplotslibrary{contour}", tikz_code)
-        self.assertIn(r"\usepgfplotslibrary{colormaps}", tikz_code)
+        self.assertIn(r"\addplot graphics", tikz_code)
+        self.assertIn(".png", tikz_code)
 
     def test_contour_custom_options(self):
         fig = go.Figure(
@@ -159,8 +159,59 @@ class TestPlotikzConverter(unittest.TestCase):
             ]
         )
         tikz_code = to_tikz(fig)
-        self.assertIn("contour/draw color=none", tikz_code)
-        self.assertIn("contour/labels=true", tikz_code)
+        self.assertIn(r"\addplot graphics", tikz_code)
+        self.assertIn(".png", tikz_code)
+
+    def test_parcoords_conversion(self):
+        fig = go.Figure(
+            data=[
+                go.Parcoords(
+                    line=dict(color="#0000FF"),
+                    dimensions=[
+                        dict(range=[1, 5], label="Dim A", values=[1, 3, 5]),
+                        dict(range=[0, 10], label="Dim B", values=[0, 5, 10]),
+                    ],
+                    name="Parcoords Test",
+                )
+            ]
+        )
+        tikz_code = to_tikz(fig, standalone=True)
+        self.assertIn(r"\begin{tikzpicture}", tikz_code)
+        self.assertIn("xtick={1,2}", tikz_code)
+        self.assertIn("xticklabels={{Dim A},{Dim B}}", tikz_code)
+        self.assertIn("unbounded coords=jump", tikz_code)
+        self.assertIn("color={rgb,255:red,0;green,0;blue,255}", tikz_code)
+        # Normalized values:
+        # Dim A: (1-1)/(5-1)=0, (3-1)/4=0.5, (5-1)/4=1
+        # Dim B: 0/10=0, 5/10=0.5, 10/10=1
+        self.assertIn(r"\pgfplotstableread", tikz_code)
+        self.assertIn("    1 0\n    2 0", tikz_code)
+
+    def test_parcoords_tsv_export(self):
+        vals_a = list(range(100))
+        vals_b = list(range(100, 200))
+        fig = go.Figure(
+            data=[
+                go.Parcoords(
+                    dimensions=[
+                        dict(label="A", values=vals_a),
+                        dict(label="B", values=vals_b),
+                    ]
+                )
+            ]
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_file = os.path.join(tmpdir, "plot.tex")
+            tex_code = to_tikz(fig, filename=out_file, tsv_threshold=50)
+
+            tsv_file = os.path.join(tmpdir, "plot_trace_0.tsv")
+            self.assertTrue(os.path.exists(out_file))
+            self.assertTrue(os.path.exists(tsv_file))
+            self.assertIn("table [x=x, y=y, col sep=tab] {plot_trace_0.tsv}", tex_code)
+
+            with open(tsv_file, "r", encoding="utf-8") as f:
+                tsv_content = f.read()
+                self.assertIn("x\ty", tsv_content)
 
     def test_handlers_package_imports(self):
         from plotikz.handlers import (
@@ -169,15 +220,45 @@ class TestPlotikzConverter(unittest.TestCase):
             BarHandler,
             HeatmapHandler,
             ContourHandler,
+            ParcoordsHandler,
             GenericHandler,
         )
         self.assertTrue(issubclass(ScatterHandler, TraceHandler))
         self.assertTrue(issubclass(BarHandler, TraceHandler))
         self.assertTrue(issubclass(HeatmapHandler, TraceHandler))
         self.assertTrue(issubclass(ContourHandler, TraceHandler))
+        self.assertTrue(issubclass(ParcoordsHandler, TraceHandler))
         self.assertTrue(issubclass(GenericHandler, TraceHandler))
+
+
+    def test_summary_band_fillbetween(self):
+        fig = go.Figure(
+            data=[
+                go.Scatter(x=[1, 2, 3], y=[10, 20, 30], mode="lines", name="max", line=dict(color="red")),
+                go.Scatter(x=[1, 2, 3], y=[5, 15, 25], mode="lines", name="min", line=dict(color="red"), fill="tonexty", fillcolor="rgba(255,0,0,0.3)"),
+            ]
+        )
+        tikz_code = to_tikz(fig, standalone=True)
+        self.assertIn(r"\usepgfplotslibrary{fillbetween}", tikz_code)
+        self.assertIn("name path=dataMax", tikz_code)
+        self.assertIn("name path=dataMin", tikz_code)
+    def test_annotations_and_step_lines(self):
+        fig = go.Figure(
+            data=[
+                go.Scatter(x=[1, 2, 3], y=[10, 20, 15], mode="lines", line=dict(shape="hv")),
+            ],
+            layout=dict(
+                annotations=[
+                    dict(x=2.5, y=18, text="Optimal Point"),
+                ]
+            )
+        )
+        tikz_code = to_tikz(fig, standalone=True)
+        self.assertIn("const plot", tikz_code)
+        self.assertIn(r"\node[font=\small, fill=yellow!30, draw=black!70, rounded corners, anchor=west] at (axis cs:2.5, 18) {Optimal Point};", tikz_code)
 
 
 if __name__ == "__main__":
     unittest.main()
+
 

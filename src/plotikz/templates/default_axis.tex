@@ -1,20 +1,77 @@
+<% if data_tables %>
+<% for dt in data_tables %>
+\pgfplotstableread{
+<< dt.content >>
+}<< dt.macro_name >>
+
+<% endfor %>
+<% endif %>
 \begin{tikzpicture}
+<% if axis_blocks %>
+<% for block in axis_blocks %>
 \begin{axis}[
-<%- for option in axis_options %>
-    << option >><% if not loop.last %>,<% endif %>
-<%- endfor %>
+    << block.axis_options_formatted >>
 ]
-<%- for trace in traces %>
-  <%- if trace.data_type == 'inline' %>
+<% for trace in block.traces %>
+  <% if trace.plot_code %>
+<< trace.plot_code >>
+  <% elif trace.data_type == 'table_macro' %>
+    << trace.plot_cmd >>[<< trace.options_str >>] table <% if trace.table_opts %>[<< trace.table_opts >>] <% endif %>{<< trace.table_macro >>};
+  <% elif trace.data_type == 'tsv' %>
+    << trace.plot_cmd >>[<< trace.options_str >>] table [x=<< trace.x_col >>, y=<< trace.y_col >>, col sep=tab] {<< trace.tsv_filename >>};
+  <% elif trace.data_type == 'inline' %>
     << trace.plot_cmd >>[<< trace.options_str >>] coordinates {
         << trace.inline_coords >>
     };
-  <%- else %>
-    << trace.plot_cmd >>[<< trace.options_str >>] table [x=<< trace.x_col >>, y=<< trace.y_col >>, col sep=tab] {<< trace.tsv_filename >>};
-  <%- endif %>
-  <%- if trace.legend_entry %>
+  <% endif %>
+  <% if trace.legend_entry %>
     \addlegendentry{<< trace.legend_entry >>}
-  <%- endif %>
-<%- endfor %>
+  <% endif %>
+  <% if trace.fill_between_cmd %>
+    << trace.fill_between_cmd >>
+  <% endif %>
+<% endfor %>
+<% if block.annotations %>
+<% for ann in block.annotations %>
+    \node[<< ann.style >>] at (axis cs:<< ann.x >>, << ann.y >>) {<< ann.text >>};
+<% endfor %>
+<% endif %>
 \end{axis}
+<% if not loop.last %>
+
+<% endif %>
+<% endfor %>
+<% else %>
+\begin{axis}[
+    << axis_options_formatted >>
+]
+<% for trace in traces %>
+  <% if trace.plot_code %>
+<< trace.plot_code >>
+  <% elif trace.data_type == 'table_macro' %>
+    << trace.plot_cmd >>[<< trace.options_str >>] table <% if trace.table_opts %>[<< trace.table_opts >>] <% endif %>{<< trace.table_macro >>};
+  <% elif trace.data_type == 'tsv' %>
+    << trace.plot_cmd >>[<< trace.options_str >>] table [x=<< trace.x_col >>, y=<< trace.y_col >>, col sep=tab] {<< trace.tsv_filename >>};
+  <% elif trace.data_type == 'inline' %>
+    << trace.plot_cmd >>[<< trace.options_str >>] coordinates {
+        << trace.inline_coords >>
+    };
+  <% endif %>
+  <% if trace.legend_entry %>
+    \addlegendentry{<< trace.legend_entry >>}
+  <% endif %>
+  <% if trace.fill_between_cmd %>
+    << trace.fill_between_cmd >>
+  <% endif %>
+  <% if not loop.last %>
+
+  <% endif %>
+<% endfor %>
+<% if annotations %>
+<% for ann in annotations %>
+    \node[<< ann.style >>] at (axis cs:<< ann.x >>, << ann.y >>) {<< ann.text >>};
+<% endfor %>
+<% endif %>
+\end{axis}
+<% endif %>
 \end{tikzpicture}

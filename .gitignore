@@ -216,3 +216,12 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+
+
+examples/**.html
+examples/**.tex
+examples/**.png
+examples/**.json
+examples/**.aux
+examples/**.pdf

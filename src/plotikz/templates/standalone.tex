@@ -1,13 +1,14 @@
 \documentclass{article}
+\usepackage{amsmath}
 \usepackage{tikz}
 \usepackage{pgfplots}
 \pgfplotsset{compat=1.18}
-<%- for pkg in extra_packages %>
+<% for pkg in extra_packages %>
 \usepackage{<< pkg >>}
-<%- endfor %>
-<%- for lib in pgfplots_libraries %>
+<% endfor %>
+<% for lib in pgfplots_libraries %>
 \usepgfplotslibrary{<< lib >>}
-<%- endfor %>
+<% endfor %>
 
 \begin{document}
 << axis_code >>

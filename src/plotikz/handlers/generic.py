@@ -18,6 +18,7 @@ class GenericHandler(TraceHandler):
         trace_index: int,
         tsv_threshold: int = 500,
         tsv_prefix: Optional[str] = None,
+        base_dir: Optional[str] = None,
     ) -> Dict[str, Any]:
         options = ["mark=none"]
         raw_x = trace.get("x", [])

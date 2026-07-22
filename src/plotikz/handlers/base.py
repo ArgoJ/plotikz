@@ -23,6 +23,7 @@ class TraceHandler(ABC):
         trace_index: int,
         tsv_threshold: int = 500,
         tsv_prefix: Optional[str] = None,
+        base_dir: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Process trace and return trace metadata dictionary."""
         pass
