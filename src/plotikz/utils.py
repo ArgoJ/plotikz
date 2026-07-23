@@ -2,8 +2,9 @@
 
 import math
 import re
-from typing import Any, Tuple, Optional, List
 import matplotlib.ticker as ticker
+
+from typing import Any, Tuple, Optional, List
 
 
 def get_nice_ticks(z_min: float, z_max: float, max_ticks: int = 5) -> List[float]:

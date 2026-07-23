@@ -1,35 +1,14 @@
-"""plotikz: Convert Plotly figures into clean LaTeX/TikZ code using PGFPlots."""
+"""plotikz - Convert Plotly figures and HTML files to LaTeX TikZ/PGFPlots code."""
 
-from .plotly_converter import PlotlyToTikz, to_tikz
-from .html_parser import from_html, parse_html_to_figure
-from .handlers import (
-    TraceHandler,
-    ScatterHandler,
-    BarHandler,
-    HeatmapHandler,
-    ContourHandler,
-    ParcoordsHandler,
-    GenericHandler,
-)
-from .registry import (
-    TraceRegistry,
-    default_registry,
-)
+from .plotly import PlotlyToTikz, to_tikz, from_html
+from .registry import TraceRegistry, default_registry
+from .handlers.base import TraceHandler
 
 __all__ = [
     "PlotlyToTikz",
     "to_tikz",
     "from_html",
-    "parse_html_to_figure",
-    "TraceHandler",
-    "ScatterHandler",
-    "BarHandler",
-    "HeatmapHandler",
-    "ContourHandler",
-    "ParcoordsHandler",
-    "GenericHandler",
     "TraceRegistry",
     "default_registry",
+    "TraceHandler",
 ]
-
-__version__ = "0.1.0"

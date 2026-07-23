@@ -1,8 +1,8 @@
 """Handler for Heatmap traces."""
 
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List, Tuple
 from .base import TraceHandler
-from ..utils import escape_tex, clean_val, format_coord_val
+from ..utils import clean_val, format_coord_val
 
 
 class HeatmapHandler(TraceHandler):
@@ -23,79 +23,64 @@ class HeatmapHandler(TraceHandler):
         tsv_prefix: Optional[str] = None,
         base_dir: Optional[str] = None,
     ) -> Dict[str, Any]:
-        raw_z = trace.get("z", [])
-        if hasattr(raw_z, "tolist"):
-            raw_z = raw_z.tolist()
-
-        num_cols = 1
-        if raw_z and isinstance(raw_z, list):
-            first_row = raw_z[0]
-            if hasattr(first_row, "tolist"):
-                first_row = first_row.tolist()
-            if isinstance(first_row, list):
-                num_cols = len(first_row)
+        raw_z = self._to_list(trace.get("z", []))
+        num_cols = self._compute_num_cols(raw_z)
 
         options = ["matrix plot*", f"mesh/cols={num_cols}", "point meta=explicit", "mark=none"]
-
         colorscale = trace.get("colorscale")
         if isinstance(colorscale, str):
             options.append(f"colormap/{colorscale.lower()}")
 
-        raw_x = trace.get("x")
-        raw_y = trace.get("y")
+        raw_x = self._to_list(trace.get("x"))
+        raw_y = self._to_list(trace.get("y"))
 
-        if hasattr(raw_x, "tolist"):
-            raw_x = raw_x.tolist()
-        if hasattr(raw_y, "tolist"):
-            raw_y = raw_y.tolist()
-
-        coords = []
-        if raw_z:
-            for r_idx, row in enumerate(raw_z):
-                if hasattr(row, "tolist"):
-                    row = row.tolist()
-                y_val = raw_y[r_idx] if raw_y and r_idx < len(raw_y) else r_idx + 1
-                for c_idx, z_val in enumerate(row):
-                    x_val = raw_x[c_idx] if raw_x and c_idx < len(raw_x) else c_idx + 1
-                    cz = clean_val(z_val)
-                    if cz is not None:
-                        coords.append((format_coord_val(x_val), format_coord_val(y_val), format_coord_val(cz)))
-
-        n_points = len(coords)
-        prefix = tsv_prefix or "data"
-
-        if n_points > tsv_threshold:
-            data_type = "tsv"
-            tsv_filename = f"{prefix}_trace_{trace_index}.tsv"
-            lines = ["x\ty\tz"] + [f"{x}\t{y}\t{z}" for x, y, z in coords]
-            tsv_content = "\n".join(lines)
-            table_content = ""
-            inline_coords = ""
-        else:
-            data_type = "table_macro"
-            tsv_filename = ""
-            tsv_content = ""
-            lines = ["x y z"] + [f"{x} {y} {z}" for x, y, z in coords]
-            table_content = "\n".join(lines)
-            inline_coords = " ".join([f"({x}, {y}) [{z}]" for x, y, z in coords])
-
-        name = trace.get("name")
-        showlegend = trace.get("showlegend", False)
-        legend_entry = escape_tex(name) if (name and showlegend) else None
+        coords = self._extract_heatmap_coords(raw_x, raw_y, raw_z)
+        formatted_data = self._format_data_output(
+            coords, trace_index, tsv_threshold, tsv_prefix, default_data_type="table_macro", cols=("x", "y", "z")
+        )
+        legend_entry = self._extract_legend_entry(trace, default_showlegend=False)
 
         return {
             "plot_cmd": r"\addplot+",
             "options": options,
             "options_str": ", ".join(options),
-            "data_type": data_type,
-            "table_content": table_content,
+            "data_type": formatted_data["data_type"],
+            "table_content": formatted_data["table_content"],
             "table_opts": "meta=z",
-            "inline_coords": inline_coords,
-            "tsv_filename": tsv_filename,
-            "tsv_content": tsv_content,
+            "inline_coords": formatted_data["inline_coords"],
+            "tsv_filename": formatted_data["tsv_filename"],
+            "tsv_content": formatted_data["tsv_content"],
             "legend_entry": legend_entry,
             "packages": self.packages,
             "libraries": self.libraries,
             "x_col": "x",
             "y_col": "y",
         }
+
+    # -------------------------------------------------------------------------
+    # Private Helper Methods (SRP)
+    # -------------------------------------------------------------------------
+
+    def _compute_num_cols(self, raw_z: List[Any]) -> int:
+        """Determine grid column count from matrix z data."""
+        if raw_z and isinstance(raw_z, list):
+            first_row = self._to_list(raw_z[0])
+            if isinstance(first_row, list):
+                return len(first_row)
+        return 1
+
+    def _extract_heatmap_coords(
+        self, raw_x: List[Any], raw_y: List[Any], raw_z: List[Any]
+    ) -> List[Tuple[str, str, str]]:
+        """Extract cleaned and formatted (x, y, z) 3D coordinate tuples."""
+        coords = []
+        if raw_z:
+            for r_idx, row in enumerate(raw_z):
+                row_list = self._to_list(row)
+                y_val = raw_y[r_idx] if raw_y and r_idx < len(raw_y) else r_idx + 1
+                for c_idx, z_val in enumerate(row_list):
+                    x_val = raw_x[c_idx] if raw_x and c_idx < len(raw_x) else c_idx + 1
+                    cz = clean_val(z_val)
+                    if cz is not None:
+                        coords.append((format_coord_val(x_val), format_coord_val(y_val), format_coord_val(cz)))
+        return coords

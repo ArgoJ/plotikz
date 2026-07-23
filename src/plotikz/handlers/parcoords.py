@@ -1,8 +1,8 @@
 """Handler for Parcoords (Parallel Coordinates) traces."""
 
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List, Tuple
 from .base import TraceHandler
-from ..utils import escape_tex, clean_val, format_coord_val, format_color
+from ..utils import clean_val, format_coord_val, format_color
 
 
 class ParcoordsHandler(TraceHandler):
@@ -20,20 +20,47 @@ class ParcoordsHandler(TraceHandler):
         base_dir: Optional[str] = None,
     ) -> Dict[str, Any]:
         options = ["mark=none", "unbounded coords=jump"]
+        options.extend(self._extract_parcoords_line_options(trace))
 
+        dimensions = self._parse_dimensions(trace)
+        parsed_dims, max_rows = self._parse_dimension_values(dimensions)
+
+        observations, total_points = self._build_observations(parsed_dims, max_rows)
+        coords = self._flatten_observations(observations)
+
+        formatted_data = self._format_data_output(
+            coords, trace_index, tsv_threshold, tsv_prefix, default_data_type="table_macro"
+        )
+        legend_entry = self._extract_legend_entry(trace, default_showlegend=True)
+
+        return {
+            "plot_cmd": r"\addplot+",
+            "options": options,
+            "options_str": ", ".join(options),
+            "data_type": formatted_data["data_type"],
+            "table_content": formatted_data["table_content"],
+            "inline_coords": formatted_data["inline_coords"],
+            "tsv_filename": formatted_data["tsv_filename"],
+            "tsv_content": formatted_data["tsv_content"],
+            "legend_entry": legend_entry,
+            "packages": self.packages,
+            "libraries": self.libraries,
+            "x_col": "x",
+            "y_col": "y",
+        }
+
+    # -------------------------------------------------------------------------
+    # Private Helper Methods (SRP)
+    # -------------------------------------------------------------------------
+
+    def _extract_parcoords_line_options(self, trace: Dict[str, Any]) -> List[str]:
+        """Extract line dash, width, and color/opacity options."""
+        options = []
         line = trace.get("line") or {}
         if isinstance(line, dict):
-            line_dash = line.get("dash")
-            dash_map = {
-                "dash": "dashed",
-                "dot": "dotted",
-                "dashdot": "dashdotted",
-                "solid": "solid",
-                "longdash": "densely dashed",
-                "longdashdot": "densely dashdotted",
-            }
-            if line_dash in dash_map:
-                options.append(dash_map[line_dash])
+            dash_opt = self._extract_line_dash(line)
+            if dash_opt:
+                options.append(dash_opt)
 
             line_width = line.get("width")
             if line_width is not None and isinstance(line_width, (int, float)):
@@ -51,9 +78,13 @@ class ParcoordsHandler(TraceHandler):
         if trace_opacity is not None and isinstance(trace_opacity, (int, float)) and trace_opacity < 1.0:
             options.append(f"opacity={trace_opacity}")
 
-        raw_dimensions = trace.get("dimensions", [])
+        return options
+
+    def _parse_dimensions(self, trace: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """Normalize raw dimensions into list of dicts."""
+        raw_dims = trace.get("dimensions", [])
         dimensions = []
-        for d in raw_dimensions:
+        for d in raw_dims:
             if hasattr(d, "to_plotly_json"):
                 dimensions.append(d.to_plotly_json())
             elif hasattr(d, "to_dict"):
@@ -65,23 +96,20 @@ class ParcoordsHandler(TraceHandler):
                     dimensions.append(dict(d))
                 except Exception:
                     pass
+        return dimensions
 
+    def _parse_dimension_values(self, dimensions: List[Dict[str, Any]]) -> Tuple[List[Dict[str, Any]], int]:
+        """Extract cleaned values and min/max ranges per dimension."""
         max_rows = 0
         parsed_dims = []
         for dim in dimensions:
-            vals = dim.get("values", [])
-            if hasattr(vals, "tolist"):
-                vals = vals.tolist()
-            elif hasattr(vals, "values"):
-                vals = vals.values.tolist()
-
+            vals = self._to_list(dim.get("values", []))
             clean_vals = [clean_val(v) for v in vals]
             if len(clean_vals) > max_rows:
                 max_rows = len(clean_vals)
 
             d_range = dim.get("range")
-            min_val = None
-            max_val = None
+            min_val, max_val = None, None
             if d_range and isinstance(d_range, (list, tuple)) and len(d_range) == 2:
                 try:
                     min_val = float(d_range[0])
@@ -102,7 +130,13 @@ class ParcoordsHandler(TraceHandler):
                 "min": min_val,
                 "max": max_val,
             })
+        return parsed_dims, max_rows
 
+    @staticmethod
+    def _build_observations(
+        parsed_dims: List[Dict[str, Any]], max_rows: int
+    ) -> Tuple[List[List[Tuple[int, Optional[float]]]], int]:
+        """Build normalized observation coordinates across parallel axes."""
         observations = []
         total_points = 0
         num_dims = len(parsed_dims)
@@ -118,10 +152,7 @@ class ParcoordsHandler(TraceHandler):
                 if v is not None and isinstance(v, (int, float)):
                     min_v = dim_info["min"]
                     max_v = dim_info["max"]
-                    if max_v > min_v:
-                        y_norm = (v - min_v) / (max_v - min_v)
-                    else:
-                        y_norm = 0.5
+                    y_norm = (v - min_v) / (max_v - min_v) if max_v > min_v else 0.5
                     obs_coords.append((x_coord, y_norm))
                 else:
                     obs_coords.append((x_coord, None))
@@ -130,58 +161,16 @@ class ParcoordsHandler(TraceHandler):
                 observations.append(obs_coords)
                 total_points += len(obs_coords)
 
-        prefix = tsv_prefix or "data"
+        return observations, total_points
 
-        if total_points > tsv_threshold:
-            data_type = "tsv"
-            tsv_filename = f"{prefix}_trace_{trace_index}.tsv"
-            tsv_lines = ["x\ty"]
-            for obs in observations:
-                for x, y in obs:
-                    y_str = format_coord_val(y) if y is not None else "nan"
-                    tsv_lines.append(f"{x}\t{y_str}")
-                tsv_lines.append("")
-            tsv_content = "\n".join(tsv_lines)
-            table_content = ""
-            inline_coords = ""
-        else:
-            data_type = "table_macro"
-            tsv_filename = ""
-            tsv_content = ""
-            lines = ["x y"]
-            for obs in observations:
-                for x, y in obs:
-                    y_str = format_coord_val(y) if y is not None else "nan"
-                    lines.append(f"{x} {y_str}")
-                lines.append("nan nan")
-            if lines and lines[-1] == "nan nan":
-                lines.pop()
-            table_content = "\n".join(lines)
-            obs_strings = []
-            for obs in observations:
-                coord_strs = []
-                for x, y in obs:
-                    y_str = format_coord_val(y) if y is not None else "nan"
-                    coord_strs.append(f"({x}, {y_str})")
-                obs_strings.append(" ".join(coord_strs))
-            inline_coords = "\n\n".join(obs_strings)
-
-        name = trace.get("name")
-        showlegend = trace.get("showlegend", True)
-        legend_entry = escape_tex(name) if (name and showlegend is not False) else None
-
-        return {
-            "plot_cmd": r"\addplot+",
-            "options": options,
-            "options_str": ", ".join(options),
-            "data_type": data_type,
-            "table_content": table_content,
-            "inline_coords": inline_coords,
-            "tsv_filename": tsv_filename,
-            "tsv_content": tsv_content,
-            "legend_entry": legend_entry,
-            "packages": self.packages,
-            "libraries": self.libraries,
-            "x_col": "x",
-            "y_col": "y",
-        }
+    @staticmethod
+    def _flatten_observations(observations: List[List[Tuple[int, Optional[float]]]]) -> List[Tuple[str, str]]:
+        """Flatten observation paths into coordinate pairs separated by nan jumpers."""
+        coords = []
+        for obs_idx, obs in enumerate(observations):
+            for x, y in obs:
+                y_str = format_coord_val(y) if y is not None else "nan"
+                coords.append((str(x), y_str))
+            if obs_idx < len(observations) - 1:
+                coords.append(("nan", "nan"))
+        return coords

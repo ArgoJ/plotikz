@@ -10,7 +10,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from plotikz.html_parser import from_html
+from .plotly.html_parser import from_html
 
 
 def main() -> None:
