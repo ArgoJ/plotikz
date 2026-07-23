@@ -133,10 +133,10 @@ def from_html(
         Generated LaTeX/TikZ code.
     """
     # Lazy import to avoid circular dependency
-    from .plotly import to_tikz
+    from .converter import plotly_to_tikz
 
     data, layout = parse_html_to_figure(html_path)
     fig_dict = {"data": data, "layout": layout}
-    return to_tikz(
+    return plotly_to_tikz(
         fig_dict, filename=filename, standalone=standalone, tsv_threshold=tsv_threshold
     )

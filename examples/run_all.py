@@ -1,12 +1,10 @@
 """
 Master runner script for all plotikz examples.
 
-Runs each figure example (scatter, bar, heatmap, contour, parcoords)
+Runs each figure example (scatter, bar, heatmap, contour, parcoords, matplotlib)
 and outputs standalone LaTeX (.tex) and interactive Plotly HTML (.html) files
 in the current working directory for comparison.
 """
-
-import os
 
 from scatter import main as run_scatter
 from bar import main as run_bar
@@ -17,6 +15,7 @@ from summary_band import main as run_summary_band
 from contour_overlay import main as run_contour_overlay
 from lyapunov_landscape import main as run_lyapunov_landscape
 from mpc_trajectories import main as run_mpc_trajectories
+from matplotlib_example import main as run_matplotlib_example
 
 
 def run_all():
@@ -24,32 +23,35 @@ def run_all():
     print(" Running plotikz Example Suite")
     print("==========================================")
 
-    print("\n[1/9] Running Scatter Plot Example...")
+    print("\n[1/10] Running Scatter Plot Example...")
     run_scatter()
 
-    print("\n[2/9] Running Bar Chart Example...")
+    print("\n[2/10] Running Bar Chart Example...")
     run_bar()
 
-    print("\n[3/9] Running Heatmap Example...")
+    print("\n[3/10] Running Heatmap Example...")
     run_heatmap()
 
-    print("\n[4/9] Running Contour Plot Example...")
+    print("\n[4/10] Running Contour Plot Example...")
     run_contour()
 
-    print("\n[5/9] Running Parallel Coordinates Example...")
+    print("\n[5/10] Running Parallel Coordinates Example...")
     run_parcoords()
 
-    print("\n[6/9] Running Summary Band Example...")
+    print("\n[6/10] Running Summary Band Example...")
     run_summary_band()
 
-    print("\n[7/9] Running Contour Overlay Example...")
+    print("\n[7/10] Running Contour Overlay Example...")
     run_contour_overlay()
 
-    print("\n[8/9] Running Lyapunov Landscape Example...")
+    print("\n[8/10] Running Lyapunov Landscape Example...")
     run_lyapunov_landscape()
 
-    print("\n[9/9] Running MPC Trajectories Example...")
+    print("\n[9/10] Running MPC Trajectories Example...")
     run_mpc_trajectories()
+
+    print("\n[10/10] Running Matplotlib Example...")
+    run_matplotlib_example()
 
     print("\n==========================================")
     print(" All examples completed successfully!")
@@ -64,9 +66,10 @@ def run_all():
         ("contour_overlay_plot.tex", "contour_overlay_plot.html"),
         ("lyapunov_landscape_plot.tex", "lyapunov_landscape_plot.html"),
         ("mpc_trajectories_plot.tex", "mpc_trajectories_plot.html"),
+        ("matplotlib_figure.tex", "matplotlib_pyplot.tex"),
     ]
-    for tex, html in pairs:
-        print(f"  - {tex} | {html}")
+    for tex, other in pairs:
+        print(f"  - {tex} | {other}")
     print("==========================================")
 
 

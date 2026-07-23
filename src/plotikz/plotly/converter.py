@@ -383,7 +383,7 @@ class PlotlyToTikz:
         return f"{preamble_str}\n{axis_code}"
 
 
-def to_tikz(
+def plotly_to_tikz(
     fig: Any,
     filename: Optional[str] = None,
     standalone: bool = False,

@@ -74,7 +74,7 @@ class ScatterHandler(TraceHandler):
 
         line_width = line_cfg.get("width")
         if line_width is not None and isinstance(line_width, (int, float)):
-            options.append(f"line width={line_width}pt")
+            options.append(f"line width={line_width:g}pt")
 
         line_shape = line_cfg.get("shape") or trace.get("line_shape")
         if line_shape == "hv":
