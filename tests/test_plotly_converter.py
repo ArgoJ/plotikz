@@ -258,6 +258,16 @@ class TestPlotikzConverter(unittest.TestCase):
         self.assertIn(r"\node[font=\small, fill=yellow!30, draw=black!70, rounded corners, anchor=west] at (axis cs:2.5, 18) {Optimal Point};", tikz_code)
 
 
+    def test_colorbar_ticks_kwarg(self):
+        fig = go.Figure(
+            data=[
+                go.Heatmap(z=[[10, 20], [30, 40]])
+            ]
+        )
+        tikz_code = to_tikz(fig, standalone=False, colorbar_ticks=3)
+        self.assertIn("colorbar style={ytick={", tikz_code)
+
+
 if __name__ == "__main__":
     unittest.main()
 

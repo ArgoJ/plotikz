@@ -44,6 +44,7 @@ class PlotlyToTikz:
         filename: Optional[str] = None,
         standalone: bool = False,
         tsv_threshold: int = 500,
+        **kwargs,
     ) -> str:
         """
         Convert Plotly figure to LaTeX/TikZ PGFPlots code.
@@ -58,6 +59,8 @@ class PlotlyToTikz:
             If True, generate a complete compilable LaTeX document.
         tsv_threshold : int, default 500
             Threshold of data points above which trace data is exported to external TSV file.
+        **kwargs :
+            Additional plot options passed down to PGFPlots builders (e.g. colorbar_ticks=5).
 
         Returns:
         --------
@@ -66,7 +69,11 @@ class PlotlyToTikz:
         """
         if not isinstance(self, PlotlyToTikz):
             return PlotlyToTikz().to_tikz(
-                fig, filename=filename, standalone=standalone, tsv_threshold=tsv_threshold
+                fig,
+                filename=filename,
+                standalone=standalone,
+                tsv_threshold=tsv_threshold,
+                **kwargs,
             )
 
         traces_data, layout_data = self._parse_figure(fig)
@@ -74,7 +81,7 @@ class PlotlyToTikz:
 
         # Process traces through registered handlers
         processed_traces, data_tables, extra_packages, pgfplots_libraries = self._process_traces(
-            traces_data, tsv_threshold=tsv_threshold, tsv_prefix=tsv_prefix, base_dir=base_dir
+            traces_data, tsv_threshold=tsv_threshold, tsv_prefix=tsv_prefix, base_dir=base_dir, **kwargs
         )
 
         # Ensure contour background images are drawn first (below scatter traces)
@@ -86,7 +93,7 @@ class PlotlyToTikz:
 
         # Build axis blocks for single-plot or multi-subplot figures
         axis_blocks, master_axis_options = build_axis_blocks(
-            subplot_groups, is_shared_x, layout_data, processed_traces
+            subplot_groups, is_shared_x, layout_data, processed_traces, **kwargs
         )
 
         # Render TikZ code using Jinja2 templates
@@ -187,6 +194,7 @@ class PlotlyToTikz:
         tsv_threshold: int,
         tsv_prefix: str,
         base_dir: str,
+        **kwargs,
     ) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]], set, set]:
         """Run trace handlers, write TSV files, format macro tables, and configure fillbetween."""
         processed_traces = []
@@ -205,6 +213,7 @@ class PlotlyToTikz:
                     tsv_threshold=tsv_threshold,
                     tsv_prefix=tsv_prefix,
                     base_dir=base_dir,
+                    **kwargs,
                 )
             except TypeError:
                 trace_info = handler.process(
@@ -212,6 +221,7 @@ class PlotlyToTikz:
                     trace_index=idx,
                     tsv_threshold=tsv_threshold,
                     tsv_prefix=tsv_prefix,
+                    **kwargs,
                 )
 
             extra_packages.update(trace_info.get("packages", set()))
@@ -388,8 +398,9 @@ def plotly_to_tikz(
     filename: Optional[str] = None,
     standalone: bool = False,
     tsv_threshold: int = 500,
+    **kwargs,
 ) -> str:
     """Convenience module-level function to convert Plotly figure to TikZ."""
     return PlotlyToTikz().to_tikz(
-        fig, filename=filename, standalone=standalone, tsv_threshold=tsv_threshold
+        fig, filename=filename, standalone=standalone, tsv_threshold=tsv_threshold, **kwargs
     )

@@ -108,35 +108,19 @@ def from_html(
     filename: Optional[str] = None,
     standalone: bool = False,
     tsv_threshold: int = 500,
+    colorbar_ticks: int = 5,
 ) -> str:
     """
-    Convert a Plotly HTML file to LaTeX/TikZ code.
-
-    This is a convenience wrapper that parses the HTML file and
-    delegates to :func:`plotikz.to_tikz`.
-
-    Parameters
-    ----------
-    html_path : str or Path
-        Path to the input Plotly HTML file.
-    filename : str, optional
-        If provided, save generated TikZ code to this filepath.
-    standalone : bool, default False
-        If True, produce a complete compilable LaTeX document.
-    tsv_threshold : int, default 500
-        Number of data points above which trace data is exported
-        to external TSV files instead of inline tables.
-
-    Returns
-    -------
-    str
-        Generated LaTeX/TikZ code.
+    Convert a standalone Plotly HTML file to LaTeX/TikZ PGFPlots code.
     """
-    # Lazy import to avoid circular dependency
     from .converter import plotly_to_tikz
 
     data, layout = parse_html_to_figure(html_path)
     fig_dict = {"data": data, "layout": layout}
     return plotly_to_tikz(
-        fig_dict, filename=filename, standalone=standalone, tsv_threshold=tsv_threshold
+        fig_dict,
+        filename=filename,
+        standalone=standalone,
+        tsv_threshold=tsv_threshold,
+        colorbar_ticks=colorbar_ticks,
     )

@@ -49,8 +49,10 @@ class ContourHandler(TraceHandler):
         tsv_threshold: int = 500,
         tsv_prefix: Optional[str] = None,
         base_dir: Optional[str] = None,
+        **kwargs,
     ) -> Dict[str, Any]:
         prefix = tsv_prefix or "data"
+        colorbar_ticks = kwargs.get("colorbar_ticks", 5)
         raw_z = self._to_list(trace.get("z", []))
         raw_x = self._to_list(trace.get("x"))
         raw_y = self._to_list(trace.get("y"))
@@ -86,7 +88,7 @@ class ContourHandler(TraceHandler):
                 extra_tables = self._generate_constraint_contour(X, Y, z_arr, trace, raw_name)
             else:
                 bg_cmd, extra_tables = self._generate_full_contour(
-                    X, Y, z_arr, trace, raw_name, png_filepath, png_filename, (x_min, x_max, y_min, y_max)
+                    X, Y, z_arr, trace, raw_name, png_filepath, png_filename, (x_min, x_max, y_min, y_max), colorbar_ticks=colorbar_ticks
                 )
 
         legend_entry = self._extract_legend_entry(trace, default_showlegend=False)
@@ -182,6 +184,7 @@ class ContourHandler(TraceHandler):
         png_filepath: str,
         png_filename: str,
         bounds: Tuple[float, float, float, float],
+        colorbar_ticks: int = 5,
     ) -> Tuple[str, List[Dict[str, Any]]]:
         """Generate smooth background PNG and level line macro tables for a full contour plot."""
         x_min, x_max, y_min, y_max = bounds
@@ -204,7 +207,7 @@ class ContourHandler(TraceHandler):
         bg_cmd = f"\\addplot graphics [xmin={x_min}, xmax={x_max}, ymin={y_min}, ymax={y_max}] {{{png_filename}}};"
 
         # Extract contour level lines matching ticks
-        ticks = get_nice_ticks(z_min, z_max, max_ticks=5)
+        ticks = get_nice_ticks(z_min, z_max, max_ticks=max(1, colorbar_ticks))
         fig_c, ax_c = plt.subplots()
         try:
             cs = ax_c.contour(X, Y, z_arr, levels=ticks)

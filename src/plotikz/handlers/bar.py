@@ -18,6 +18,7 @@ class BarHandler(TraceHandler):
         tsv_threshold: int = 500,
         tsv_prefix: Optional[str] = None,
         base_dir: Optional[str] = None,
+        **kwargs,
     ) -> Dict[str, Any]:
         orientation = trace.get("orientation", "v")
         options = ["xbar"] if orientation == "h" else ["ybar"]

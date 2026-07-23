@@ -5,9 +5,11 @@ from ..utils import escape_tex, clean_val
 from .heatmap_contour import build_heatmap_contour_options, _to_list
 
 
-def build_axis_options(layout: Dict[str, Any], traces: List[Dict[str, Any]]) -> List[str]:
-    """Build list of PGFPlots axis options based on layout and trace types."""
-    options = build_basic_layout_options(layout)
+def build_axis_options(
+    layout: Dict[str, Any], traces: List[Dict[str, Any]], **kwargs
+) -> List[str]:
+    """Build list of PGFPlots axis options based on layout, trace types, and custom kwargs."""
+    options = build_basic_layout_options(layout, **kwargs)
 
     trace_types = set()
     for t in traces:
@@ -16,16 +18,16 @@ def build_axis_options(layout: Dict[str, Any], traces: List[Dict[str, Any]]) -> 
             trace_types.add(ttype)
 
     if "heatmap" in trace_types or "contour" in trace_types:
-        build_heatmap_contour_options(options, traces)
+        build_heatmap_contour_options(options, traces, **kwargs)
     elif "bar" in trace_types:
-        build_bar_options(options, traces)
+        build_bar_options(options, traces, **kwargs)
     elif "parcoords" in trace_types:
-        build_parcoords_options(options, traces)
+        build_parcoords_options(options, traces, **kwargs)
 
     return options
 
 
-def build_basic_layout_options(layout: Dict[str, Any]) -> List[str]:
+def build_basic_layout_options(layout: Dict[str, Any], **kwargs) -> List[str]:
     """Extract title, axes, layout dimensions, and legend options."""
     options = []
 
@@ -36,8 +38,8 @@ def build_basic_layout_options(layout: Dict[str, Any]) -> List[str]:
         options.append(f"title={{{escape_tex(title_text)}}}")
 
     # X & Y Axes
-    options.extend(extract_single_axis_options(layout.get("xaxis") or {}, "x"))
-    options.extend(extract_single_axis_options(layout.get("yaxis") or {}, "y"))
+    options.extend(extract_single_axis_options(layout.get("xaxis") or {}, "x", **kwargs))
+    options.extend(extract_single_axis_options(layout.get("yaxis") or {}, "y", **kwargs))
 
     # Dimensions & Legend
     width = layout.get("width")
@@ -52,7 +54,7 @@ def build_basic_layout_options(layout: Dict[str, Any]) -> List[str]:
     return options
 
 
-def extract_single_axis_options(axis_dict: Dict[str, Any], axis_name: str) -> List[str]:
+def extract_single_axis_options(axis_dict: Dict[str, Any], axis_name: str, **kwargs) -> List[str]:
     """Extract title, log mode, range, and grid line settings for x or y axis."""
     opts = []
     prefix = "x" if axis_name == "x" else "y"
@@ -78,7 +80,7 @@ def extract_single_axis_options(axis_dict: Dict[str, Any], axis_name: str) -> Li
     return opts
 
 
-def build_bar_options(options: List[str], traces: List[Dict[str, Any]]) -> None:
+def build_bar_options(options: List[str], traces: List[Dict[str, Any]], **kwargs) -> None:
     """Add PGFPlots options for Bar charts."""
     if not any("ybar" in opt or "xbar" in opt for opt in options):
         options.append("ybar")
@@ -100,7 +102,7 @@ def build_bar_options(options: List[str], traces: List[Dict[str, Any]]) -> None:
             break
 
 
-def build_parcoords_options(options: List[str], traces: List[Dict[str, Any]]) -> None:
+def build_parcoords_options(options: List[str], traces: List[Dict[str, Any]], **kwargs) -> None:
     """Add PGFPlots options for Parallel Coordinates plots."""
     options.append("xmajorgrids=true")
     options.append("grid style={solid, black!60, line width=0.8pt}")

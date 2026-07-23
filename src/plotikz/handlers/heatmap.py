@@ -22,6 +22,7 @@ class HeatmapHandler(TraceHandler):
         tsv_threshold: int = 500,
         tsv_prefix: Optional[str] = None,
         base_dir: Optional[str] = None,
+        **kwargs,
     ) -> Dict[str, Any]:
         raw_z = self._to_list(trace.get("z", []))
         num_cols = self._compute_num_cols(raw_z)

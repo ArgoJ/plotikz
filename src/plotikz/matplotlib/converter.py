@@ -19,6 +19,7 @@ class MatplotlibToTikz:
         filename: Optional[str] = None,
         standalone: bool = False,
         tsv_threshold: int = 500,
+        **kwargs,
     ) -> str:
         """
         Convert Matplotlib Figure or Axes to LaTeX/TikZ PGFPlots code.
@@ -33,6 +34,8 @@ class MatplotlibToTikz:
             If True, generate a complete compilable LaTeX document.
         tsv_threshold : int, default 500
             Threshold of data points above which trace data is exported to external TSV file.
+        **kwargs :
+            Additional plot-specific configuration kwargs.
 
         Returns:
         --------
@@ -43,7 +46,7 @@ class MatplotlibToTikz:
         fig_dict = {"data": traces, "layout": layout}
 
         return self._plotly_converter.to_tikz(
-            fig_dict, filename=filename, standalone=standalone, tsv_threshold=tsv_threshold
+            fig_dict, filename=filename, standalone=standalone, tsv_threshold=tsv_threshold, **kwargs
         )
 
 
@@ -52,10 +55,11 @@ def matplotlib_to_tikz(
     filename: Optional[str] = None,
     standalone: bool = False,
     tsv_threshold: int = 500,
+    **kwargs,
 ) -> str:
     """Explicit converter for Matplotlib Figure or Axes object."""
     return MatplotlibToTikz().to_tikz(
-        fig, filename=filename, standalone=standalone, tsv_threshold=tsv_threshold
+        fig, filename=filename, standalone=standalone, tsv_threshold=tsv_threshold, **kwargs
     )
 
 
@@ -63,7 +67,8 @@ def from_pyplot(
     filename: Optional[str] = None,
     standalone: bool = False,
     tsv_threshold: int = 500,
+    **kwargs,
 ) -> str:
     """Explicit converter for active Matplotlib PyPlot figure (plt.gcf())."""
     fig = plt.gcf()
-    return matplotlib_to_tikz(fig, filename=filename, standalone=standalone, tsv_threshold=tsv_threshold)
+    return matplotlib_to_tikz(fig, filename=filename, standalone=standalone, tsv_threshold=tsv_threshold, **kwargs)

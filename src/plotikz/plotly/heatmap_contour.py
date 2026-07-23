@@ -35,8 +35,11 @@ def extract_z_values(raw_z: Any) -> List[float]:
     return z_vals
 
 
-def build_heatmap_contour_options(options: List[str], traces: List[Dict[str, Any]]) -> None:
+def build_heatmap_contour_options(
+    options: List[str], traces: List[Dict[str, Any]], **kwargs
+) -> None:
     """Add PGFPlots options for Heatmap and Contour plots."""
+    colorbar_ticks = kwargs.get("colorbar_ticks", 5)
     if not any("view=" in opt for opt in options):
         options.append("view={0}{90}")
     if not any("colorbar" in opt for opt in options):
@@ -68,7 +71,7 @@ def build_heatmap_contour_options(options: List[str], traces: List[Dict[str, Any
                 options.append(f"point meta max={z_max:g}")
 
             if not any("colorbar style" in opt for opt in options):
-                ticks_nice = get_nice_ticks(z_min, z_max, max_ticks=5)
+                ticks_nice = get_nice_ticks(z_min, z_max, max_ticks=max(1, colorbar_ticks))
                 ticks_str = ",".join([f"{v:g}" for v in ticks_nice])
                 options.append(f"colorbar style={{ytick={{{ticks_str}}}}}")
 

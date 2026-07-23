@@ -18,6 +18,7 @@ class ParcoordsHandler(TraceHandler):
         tsv_threshold: int = 500,
         tsv_prefix: Optional[str] = None,
         base_dir: Optional[str] = None,
+        **kwargs,
     ) -> Dict[str, Any]:
         options = ["mark=none", "unbounded coords=jump"]
         options.extend(self._extract_parcoords_line_options(trace))

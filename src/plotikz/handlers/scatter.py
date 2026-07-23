@@ -18,6 +18,7 @@ class ScatterHandler(TraceHandler):
         tsv_threshold: int = 500,
         tsv_prefix: Optional[str] = None,
         base_dir: Optional[str] = None,
+        **kwargs,
     ) -> Dict[str, Any]:
         mode = trace.get("mode", "lines") or "lines"
         line_cfg = trace.get("line") or {}

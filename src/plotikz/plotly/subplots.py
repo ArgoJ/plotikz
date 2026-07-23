@@ -105,10 +105,11 @@ def build_axis_blocks(
     is_shared_x: bool,
     layout_data: Dict[str, Any],
     processed_traces: List[Dict[str, Any]],
+    **kwargs,
 ) -> Tuple[List[Dict[str, Any]], List[str]]:
     """Build axis options and layout structures for single-plot or multi-subplot figures."""
     if len(subplot_groups) <= 1:
-        master_opts = build_axis_options(layout_data, processed_traces)
+        master_opts = build_axis_options(layout_data, processed_traces, **kwargs)
         return [], master_opts
 
     axis_blocks = []
@@ -140,7 +141,7 @@ def build_axis_blocks(
             sub_layout.pop("title", None)
 
         raw_sp_traces = [t.get("raw_trace", {}) for t in sp_traces]
-        sp_opts = build_axis_options(sub_layout, raw_sp_traces)
+        sp_opts = build_axis_options(sub_layout, raw_sp_traces, **kwargs)
 
         if is_shared_x and global_x_min is not None and global_x_max is not None:
             sp_opts = apply_shared_x_options(sp_opts, global_x_min, global_x_max, is_bottom)
