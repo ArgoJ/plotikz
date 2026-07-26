@@ -37,7 +37,8 @@ class TestPlotikzConverter(unittest.TestCase):
         self.assertIn(r"\addplot+", tikz_code)
         self.assertIn("dashed", tikz_code)
         self.assertIn("line width=2pt", tikz_code)
-        self.assertIn("color={rgb,255:red,255;green,0;blue,0}", tikz_code)
+        self.assertIn(r"\definecolor{shapeColor1}{RGB}{255,0,0}", tikz_code)
+        self.assertIn("color=shapeColor1", tikz_code)
         self.assertIn(r"\pgfplotstableread", tikz_code)
         self.assertIn("    1 4\n    2 5\n    3 6", tikz_code)
         self.assertIn(r"\addlegendentry{Test Line}", tikz_code)
@@ -301,10 +302,11 @@ class TestPlotikzConverter(unittest.TestCase):
             },
         }
         tikz_code = to_tikz(fig_dict)
-        self.assertIn(r"\draw[fill={rgb,255:red,255;green,127;blue,14}, fill opacity=0.25, draw={rgb,255:red,255;green,127;blue,14}, draw opacity=0.25, line width=2pt] (axis cs:-1, -1) rectangle (axis cs:-0.25, 1);", tikz_code)
-        self.assertIn(r"\draw[fill={rgb,255:red,0;green,0;blue,255}, draw={rgb,255:red,0;green,0;blue,0}, line width=1pt] (axis cs:1, 1) circle [x radius=1, y radius=1];", tikz_code)
-        self.assertIn(r"\draw[draw={rgb,255:red,255;green,0;blue,0}, line width=1.5pt, dashed] (axis cs:0, 0) -- (axis cs:10, 10);", tikz_code)
-        self.assertIn(r"\draw[fill={rgb,255:red,0;green,128;blue,0}] (axis cs:0, 0) -- (axis cs:5, 5) -- cycle;", tikz_code)
+        self.assertIn(r"\definecolor{shapeColor1}{RGB}{255,127,14}", tikz_code)
+        self.assertIn(r"\draw[fill=shapeColor1, fill opacity=0.25, draw=shapeColor1, draw opacity=0.25, line width=2pt] (axis cs:-1, -1) rectangle (axis cs:-0.25, 1);", tikz_code)
+        self.assertIn(r"\draw[fill=blue, draw=black, line width=1pt] (axis cs:1, 1) circle [x radius=1, y radius=1];", tikz_code)
+        self.assertIn(r"\draw[draw=red, line width=1.5pt, dashed] (axis cs:0, 0) -- (axis cs:10, 10);", tikz_code)
+        self.assertIn(r"\draw[fill=green] (axis cs:0, 0) -- (axis cs:5, 5) -- cycle;", tikz_code)
 
 
 if __name__ == "__main__":

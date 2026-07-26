@@ -2,7 +2,7 @@
 
 import re
 from typing import Dict, Any, List, Optional
-from ..utils import clean_val, format_color, format_coord_val
+from ..utils import clean_val, format_color, format_coord_val, ColorRegistry
 from .subplots import normalize_axis_key
 
 
@@ -155,7 +155,9 @@ def parse_svg_path_to_tikz(path_str: str, xref: str = "x", yref: str = "y") -> O
     return " ".join(parts) if parts else None
 
 
-def format_shape_to_tikz(shape: Dict[str, Any]) -> Optional[str]:
+def format_shape_to_tikz(
+    shape: Dict[str, Any], color_registry: Optional[ColorRegistry] = None
+) -> Optional[str]:
     """Format single Plotly shape dictionary into a TikZ \\draw command."""
     shape_type = shape.get("type", "rect")
     xref = str(shape.get("xref", "x"))
@@ -169,7 +171,7 @@ def format_shape_to_tikz(shape: Dict[str, Any]) -> Optional[str]:
 
     # Fill options
     if fillcolor and str(fillcolor).lower() != "transparent":
-        col_opt, col_opacity = format_color(str(fillcolor))
+        col_opt, col_opacity = format_color(str(fillcolor), color_registry=color_registry)
         if col_opt:
             style_opts.append(col_opt.replace("color=", "fill="))
 
@@ -192,7 +194,7 @@ def format_shape_to_tikz(shape: Dict[str, Any]) -> Optional[str]:
     if line_width == 0 or (line_color and str(line_color).lower() == "transparent"):
         style_opts.append("draw=none")
     elif line_color:
-        col_opt, col_opacity = format_color(str(line_color))
+        col_opt, col_opacity = format_color(str(line_color), color_registry=color_registry)
         if col_opt:
             style_opts.append(col_opt.replace("color=", "draw="))
 
@@ -281,7 +283,9 @@ def format_shape_to_tikz(shape: Dict[str, Any]) -> Optional[str]:
     return None
 
 
-def extract_shapes(layout_data: Dict[str, Any]) -> List[Dict[str, Any]]:
+def extract_shapes(
+    layout_data: Dict[str, Any], color_registry: Optional[ColorRegistry] = None
+) -> List[Dict[str, Any]]:
     """Parse layout shapes into formatted TikZ draw entry dicts."""
     shapes_list = []
     raw_shapes = layout_data.get("shapes", [])
@@ -292,7 +296,7 @@ def extract_shapes(layout_data: Dict[str, Any]) -> List[Dict[str, Any]]:
         if not isinstance(shape, dict):
             continue
 
-        shape_code = format_shape_to_tikz(shape)
+        shape_code = format_shape_to_tikz(shape, color_registry=color_registry)
         if shape_code:
             layer = shape.get("layer", "below")
             if layer not in ("below", "above"):

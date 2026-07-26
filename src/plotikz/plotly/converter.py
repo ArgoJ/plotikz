@@ -6,6 +6,7 @@ from typing import Dict, Any, List, Optional, Tuple
 from jinja2 import Environment, PackageLoader, FileSystemLoader, ChoiceLoader
 
 from ..registry import TraceRegistry, default_registry
+from ..utils import ColorRegistry
 from .options_builder import build_axis_options
 from .subplots import detect_subplots, build_axis_blocks
 from .annotations import extract_annotations
@@ -77,12 +78,14 @@ class PlotlyToTikz:
                 **kwargs,
             )
 
+        color_registry = kwargs.pop("color_registry", None) or ColorRegistry()
+
         traces_data, layout_data = self._parse_figure(fig)
         base_dir, tsv_prefix = self._get_tsv_paths(filename)
 
         # Process traces through registered handlers
         processed_traces, data_tables, extra_packages, pgfplots_libraries = self._process_traces(
-            traces_data, tsv_threshold=tsv_threshold, tsv_prefix=tsv_prefix, base_dir=base_dir, **kwargs
+            traces_data, tsv_threshold=tsv_threshold, tsv_prefix=tsv_prefix, base_dir=base_dir, color_registry=color_registry, **kwargs
         )
 
         # Ensure contour background images are drawn first (below scatter traces)
@@ -91,10 +94,12 @@ class PlotlyToTikz:
         # Detect subplots and layout annotations & shapes
         subplot_groups, is_shared_x = detect_subplots(processed_traces, layout_data)
         annotations_list = extract_annotations(layout_data)
-        shapes_list = extract_shapes(layout_data)
+        shapes_list = extract_shapes(layout_data, color_registry=color_registry)
 
         shapes_below = [s for s in shapes_list if s.get("layer") == "below"]
         shapes_above = [s for s in shapes_list if s.get("layer") == "above"]
+
+        defined_colors = color_registry.definitions
 
         # Build axis blocks for single-plot or multi-subplot figures
         axis_blocks, master_axis_options = build_axis_blocks(
@@ -107,6 +112,7 @@ class PlotlyToTikz:
             axis_code = axis_template.render(
                 axis_blocks=axis_blocks,
                 data_tables=data_tables,
+                defined_colors=defined_colors,
             )
         else:
             axis_options_formatted = ",\n    ".join(master_axis_options)
@@ -118,6 +124,7 @@ class PlotlyToTikz:
                 annotations=annotations_list,
                 shapes_below=shapes_below,
                 shapes_above=shapes_above,
+                defined_colors=defined_colors,
             )
 
         output_code = self._render_document(
@@ -223,13 +230,21 @@ class PlotlyToTikz:
                     **kwargs,
                 )
             except TypeError:
-                trace_info = handler.process(
-                    trace,
-                    trace_index=idx,
-                    tsv_threshold=tsv_threshold,
-                    tsv_prefix=tsv_prefix,
-                    **kwargs,
-                )
+                try:
+                    trace_info = handler.process(
+                        trace,
+                        trace_index=idx,
+                        tsv_threshold=tsv_threshold,
+                        tsv_prefix=tsv_prefix,
+                        **kwargs,
+                    )
+                except TypeError:
+                    trace_info = handler.process(
+                        trace,
+                        trace_index=idx,
+                        tsv_threshold=tsv_threshold,
+                        tsv_prefix=tsv_prefix,
+                    )
 
             extra_packages.update(trace_info.get("packages", set()))
             pgfplots_libraries.update(trace_info.get("libraries", set()))

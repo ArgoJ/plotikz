@@ -24,16 +24,18 @@ class ScatterHandler(TraceHandler):
         line_cfg = trace.get("line") or {}
         color_str = line_cfg.get("color") or (trace.get("marker") or {}).get("color")
 
+        color_registry = kwargs.get("color_registry")
+
         options = []
-        options.extend(self._extract_line_options(trace, line_cfg, color_str))
-        options.extend(self._extract_marker_options(trace, mode, color_str))
+        options.extend(self._extract_line_options(trace, line_cfg, color_str, color_registry=color_registry))
+        options.extend(self._extract_marker_options(trace, mode, color_str, color_registry=color_registry))
 
         coords = self._extract_xy_coords(trace)
         formatted_data = self._format_data_output(
             coords, trace_index, tsv_threshold, tsv_prefix, default_data_type="table_macro"
         )
 
-        fill_info = self._extract_fill_options(trace, color_str)
+        fill_info = self._extract_fill_options(trace, color_str, color_registry=color_registry)
         libraries = set(self.libraries)
         if fill_info["fill"] in ("tonexty", "tonextx"):
             libraries.add("fillbetween")
@@ -64,7 +66,7 @@ class ScatterHandler(TraceHandler):
     # -------------------------------------------------------------------------
 
     def _extract_line_options(
-        self, trace: Dict[str, Any], line_cfg: Dict[str, Any], color_str: Optional[str]
+        self, trace: Dict[str, Any], line_cfg: Dict[str, Any], color_str: Optional[str], color_registry: Any = None
     ) -> List[str]:
         """Extract PGFPlots options for line dash, width, step shape, and color/opacity."""
         options = []
@@ -84,7 +86,7 @@ class ScatterHandler(TraceHandler):
             options.append("const plot mark right")
 
         if isinstance(color_str, str):
-            col_opt, opacity = format_color(color_str)
+            col_opt, opacity = format_color(color_str, color_registry=color_registry)
             if col_opt:
                 options.append(col_opt)
             if opacity is not None and opacity < 1.0:
@@ -97,7 +99,9 @@ class ScatterHandler(TraceHandler):
         return options
 
     @staticmethod
-    def _extract_marker_options(trace: Dict[str, Any], mode: str, color_str: Optional[str]) -> List[str]:
+    def _extract_marker_options(
+        trace: Dict[str, Any], mode: str, color_str: Optional[str], color_registry: Any = None
+    ) -> List[str]:
         """Extract PGFPlots marker symbol, size, and marker color options."""
         options = []
         if "markers" not in mode:
@@ -133,7 +137,7 @@ class ScatterHandler(TraceHandler):
 
         marker_color = (trace.get("marker") or {}).get("color") or color_str
         if isinstance(marker_color, str):
-            mcol_opt, _ = format_color(marker_color)
+            mcol_opt, _ = format_color(marker_color, color_registry=color_registry)
             if mcol_opt:
                 m_color = mcol_opt.replace("color=", "")
                 options.append(f"mark options={{solid, fill={m_color}, draw={m_color}}}")
@@ -143,7 +147,9 @@ class ScatterHandler(TraceHandler):
         return options
 
     @staticmethod
-    def _extract_fill_options(trace: Dict[str, Any], color_str: Optional[str]) -> Dict[str, Any]:
+    def _extract_fill_options(
+        trace: Dict[str, Any], color_str: Optional[str], color_registry: Any = None
+    ) -> Dict[str, Any]:
         """Extract area fill settings (e.g. tonexty, tonextx)."""
         fill = trace.get("fill")
         fillcolor = trace.get("fillcolor")
@@ -152,7 +158,7 @@ class ScatterHandler(TraceHandler):
 
         if fill:
             target_col = fillcolor or color_str or "red"
-            fcol_opt, fopacity = format_color(target_col)
+            fcol_opt, fopacity = format_color(target_col, color_registry=color_registry)
             if fcol_opt:
                 fill_color_opt = fcol_opt.replace("color=", "fill=")
             trace_opacity = trace.get("opacity")

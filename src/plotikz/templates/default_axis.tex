@@ -1,3 +1,9 @@
+<% if defined_colors %>
+<% for col in defined_colors %>
+\definecolor{<< col.name >>}{RGB}{<< col.r >>,<< col.g >>,<< col.b >>}
+<% endfor %>
+
+<% endif %>
 <% if data_tables %>
 <% for dt in data_tables %>
 \pgfplotstableread{

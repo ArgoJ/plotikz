@@ -4,7 +4,7 @@ import math
 import re
 import matplotlib.ticker as ticker
 
-from typing import Any, Tuple, Optional, List
+from typing import Any, Tuple, Optional, List, Dict
 
 
 def get_nice_ticks(z_min: float, z_max: float, max_ticks: int = 5) -> List[float]:
@@ -20,13 +20,10 @@ def get_nice_ticks(z_min: float, z_max: float, max_ticks: int = 5) -> List[float
     return [float(z_min), float(z_max)]
 
 
-def format_color(color_str: str) -> Tuple[Optional[str], Optional[float]]:
-    """
-    Parse Plotly color string (hex, rgb, rgba, hsl, hsla, named) and return
-    (tikz_color_option, opacity).
-    """
+def parse_color_rgb(color_str: str) -> Optional[Tuple[int, int, int, Optional[float]]]:
+    """Parse Plotly color string (hex, rgb, rgba, hsl, hsla, named) to (r, g, b, opacity)."""
     if not color_str or not isinstance(color_str, str):
-        return None, None
+        return None
 
     color_str = color_str.strip()
 
@@ -39,9 +36,9 @@ def format_color(color_str: str) -> Tuple[Optional[str], Optional[float]]:
     if rgba_match:
         r, g, b, a = rgba_match.groups()
         try:
-            r_int, g_int, b_int = int(float(r)), int(float(g)), int(float(b))
+            r_int, g_int, b_int = int(round(float(r))), int(round(float(g))), int(round(float(b)))
             opacity = float(a) if a is not None else None
-            return f"color={{rgb,255:red,{r_int};green,{g_int};blue,{b_int}}}", opacity
+            return r_int, g_int, b_int, opacity
         except ValueError:
             pass
 
@@ -58,7 +55,7 @@ def format_color(color_str: str) -> Tuple[Optional[str], Optional[float]]:
             r_f, g_f, b_f = colorsys.hls_to_rgb(float(h) / 360.0, float(l) / 100.0, float(s) / 100.0)
             r, g, b = int(round(r_f * 255)), int(round(g_f * 255)), int(round(b_f * 255))
             opacity = float(a) if a is not None else None
-            return f"color={{rgb,255:red,{r};green,{g};blue,{b}}}", opacity
+            return r, g, b, opacity
         except Exception:
             pass
 
@@ -70,11 +67,78 @@ def format_color(color_str: str) -> Tuple[Optional[str], Optional[float]]:
         g = int(round(rgba[1] * 255))
         b = int(round(rgba[2] * 255))
         opacity = rgba[3] if rgba[3] < 1.0 else None
-        return f"color={{rgb,255:red,{r};green,{g};blue,{b}}}", opacity
+        return r, g, b, opacity
     except Exception:
         pass
 
-    return f"color={color_str}", None
+    return None
+
+
+class ColorRegistry:
+    """Registry to track and generate \\definecolor commands for RGB colors."""
+
+    def __init__(self, prefix: str = "shapeColor"):
+        self.prefix = prefix
+        self.colors: Dict[Tuple[int, int, int], str] = {}
+        self.definitions: List[Dict[str, Any]] = []
+        self.counter = 1
+
+    def get_or_register(self, color_str: str) -> Tuple[Optional[str], Optional[float]]:
+        """
+        Parse color_str. If RGB/hex/hsl, define a named color in registry
+        and return (color_name, opacity).
+        """
+        if not color_str or not isinstance(color_str, str):
+            return None, None
+
+        color_str = color_str.strip()
+        color_lower = color_str.lower()
+
+        STANDARD_TIKZ_COLORS = {
+            "red", "green", "blue", "cyan", "magenta", "yellow", "black", "white",
+            "gray", "darkgray", "lightgray", "brown", "lime", "olive", "orange",
+            "pink", "purple", "teal", "violet", "none", "transparent"
+        }
+        if color_lower in STANDARD_TIKZ_COLORS:
+            return color_str, None
+
+        parsed = parse_color_rgb(color_str)
+        if parsed:
+            r, g, b, opacity = parsed
+            rgb_key = (r, g, b)
+            if rgb_key not in self.colors:
+                name = f"{self.prefix}{self.counter}"
+                self.counter += 1
+                self.colors[rgb_key] = name
+                self.definitions.append({"name": name, "r": r, "g": g, "b": b})
+            else:
+                name = self.colors[rgb_key]
+            return name, opacity
+
+        return color_str, None
+
+
+def format_color(
+    color_str: str, color_registry: Optional[ColorRegistry] = None
+) -> Tuple[Optional[str], Optional[float]]:
+    """
+    Parse Plotly color string (hex, rgb, rgba, hsl, hsla, named) and return
+    (tikz_color_option, opacity).
+    """
+    if not color_str or not isinstance(color_str, str):
+        return None, None
+
+    if color_registry is not None:
+        col_name, opacity = color_registry.get_or_register(color_str)
+        if col_name:
+            return f"color={col_name}", opacity
+
+    parsed = parse_color_rgb(color_str)
+    if parsed:
+        r, g, b, opacity = parsed
+        return f"color={{rgb,255:red,{r};green,{g};blue,{b}}}", opacity
+
+    return f"color={color_str.strip()}", None
 
 
 def format_colorscale(colorscale: Any) -> Tuple[Optional[str], Optional[str]]:
