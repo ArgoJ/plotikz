@@ -105,6 +105,7 @@ def build_axis_blocks(
     is_shared_x: bool,
     layout_data: Dict[str, Any],
     processed_traces: List[Dict[str, Any]],
+    shapes_list: Optional[List[Dict[str, Any]]] = None,
     **kwargs,
 ) -> Tuple[List[Dict[str, Any]], List[str]]:
     """Build axis options and layout structures for single-plot or multi-subplot figures."""
@@ -161,11 +162,21 @@ def build_axis_blocks(
             sp_opts.append("anchor=north west")
             sp_opts.append("yshift=-0.8cm")
 
+        sp_shapes = [
+            s for s in (shapes_list or [])
+            if (s.get("x_key") == x_key and s.get("y_key") == y_key)
+            or (s.get("x_key") == "xaxis" and s.get("y_key") == "yaxis" and sp_idx == 1)
+        ]
+        sp_shapes_below = [s for s in sp_shapes if s.get("layer") == "below"]
+        sp_shapes_above = [s for s in sp_shapes if s.get("layer") == "above"]
+
         axis_blocks.append({
             "axis_options": sp_opts,
             "axis_options_formatted": ",\n    ".join(sp_opts),
             "traces": sp_traces,
             "annotations": [],
+            "shapes_below": sp_shapes_below,
+            "shapes_above": sp_shapes_above,
         })
 
     return axis_blocks, []

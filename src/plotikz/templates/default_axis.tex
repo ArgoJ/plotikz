@@ -12,6 +12,11 @@
 \begin{axis}[
     << block.axis_options_formatted >>
 ]
+<% if block.shapes_below %>
+<% for shape in block.shapes_below %>
+    << shape.code >>
+<% endfor %>
+<% endif %>
 <% for trace in block.traces %>
   <% if trace.plot_code %>
     << trace.plot_code >>
@@ -31,6 +36,11 @@
     << trace.fill_between_cmd >>
   <% endif %>
 <% endfor %>
+<% if block.shapes_above %>
+<% for shape in block.shapes_above %>
+    << shape.code >>
+<% endfor %>
+<% endif %>
 <% if block.annotations %>
 <% for ann in block.annotations %>
     \node[<< ann.style >>] at (axis cs:<< ann.x >>, << ann.y >>) {<< ann.text >>};
@@ -45,6 +55,11 @@
 \begin{axis}[
     << axis_options_formatted >>
 ]
+<% if shapes_below %>
+<% for shape in shapes_below %>
+    << shape.code >>
+<% endfor %>
+<% endif %>
 <% for trace in traces %>
   <% if trace.plot_code %>
     << trace.plot_code >>
@@ -67,6 +82,11 @@
 
   <% endif %>
 <% endfor %>
+<% if shapes_above %>
+<% for shape in shapes_above %>
+    << shape.code >>
+<% endfor %>
+<% endif %>
 <% if annotations %>
 <% for ann in annotations %>
     \node[<< ann.style >>] at (axis cs:<< ann.x >>, << ann.y >>) {<< ann.text >>};

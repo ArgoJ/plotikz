@@ -56,8 +56,8 @@ def to_tikz(
             fig, filename=str_filename, standalone=standalone, tsv_threshold=tsv_threshold, **kwargs
         )
 
-    # 3. Check for Plotly Figure object via isinstance
-    if isinstance(fig, go.Figure):
+    # 3. Check for Plotly Figure object (or dict/list representation)
+    if isinstance(fig, (go.Figure, dict, list)) or hasattr(fig, "data") or hasattr(fig, "to_dict"):
         return PlotlyToTikz().to_tikz(
             fig, filename=str_filename, standalone=standalone, tsv_threshold=tsv_threshold, **kwargs
         )

@@ -9,6 +9,7 @@ from ..registry import TraceRegistry, default_registry
 from .options_builder import build_axis_options
 from .subplots import detect_subplots, build_axis_blocks
 from .annotations import extract_annotations
+from .shapes import extract_shapes
 
 
 class PlotlyToTikz:
@@ -87,13 +88,17 @@ class PlotlyToTikz:
         # Ensure contour background images are drawn first (below scatter traces)
         self._sort_traces_by_layer(processed_traces)
 
-        # Detect subplots and layout annotations
+        # Detect subplots and layout annotations & shapes
         subplot_groups, is_shared_x = detect_subplots(processed_traces, layout_data)
         annotations_list = extract_annotations(layout_data)
+        shapes_list = extract_shapes(layout_data)
+
+        shapes_below = [s for s in shapes_list if s.get("layer") == "below"]
+        shapes_above = [s for s in shapes_list if s.get("layer") == "above"]
 
         # Build axis blocks for single-plot or multi-subplot figures
         axis_blocks, master_axis_options = build_axis_blocks(
-            subplot_groups, is_shared_x, layout_data, processed_traces, **kwargs
+            subplot_groups, is_shared_x, layout_data, processed_traces, shapes_list=shapes_list, **kwargs
         )
 
         # Render TikZ code using Jinja2 templates
@@ -111,6 +116,8 @@ class PlotlyToTikz:
                 traces=processed_traces,
                 data_tables=data_tables,
                 annotations=annotations_list,
+                shapes_below=shapes_below,
+                shapes_above=shapes_above,
             )
 
         output_code = self._render_document(

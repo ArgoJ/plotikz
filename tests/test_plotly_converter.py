@@ -267,8 +267,48 @@ class TestPlotikzConverter(unittest.TestCase):
         tikz_code = to_tikz(fig, standalone=False, colorbar_ticks=3)
         self.assertIn("colorbar style={ytick={", tikz_code)
 
+    def test_layout_shapes(self):
+        fig_dict = {
+            "data": [{"type": "scatter", "x": [0, 1], "y": [0, 1]}],
+            "layout": {
+                "shapes": [
+                    {
+                        "type": "rect",
+                        "x0": -1.0, "x1": -0.25, "y0": -1.0, "y1": 1.0,
+                        "fillcolor": "#ff7f0e",
+                        "opacity": 0.25,
+                        "line": {"color": "#ff7f0e", "width": 2},
+                        "layer": "below",
+                    },
+                    {
+                        "type": "circle",
+                        "x0": 0.0, "x1": 2.0, "y0": 0.0, "y1": 2.0,
+                        "fillcolor": "blue",
+                        "line": {"color": "black", "width": 1},
+                        "layer": "above",
+                    },
+                    {
+                        "type": "line",
+                        "x0": 0, "x1": 10, "y0": 0, "y1": 10,
+                        "line": {"color": "red", "width": 1.5, "dash": "dash"},
+                    },
+                    {
+                        "type": "path",
+                        "path": "M 0 0 L 5 5 Z",
+                        "fillcolor": "green",
+                    },
+                ]
+            },
+        }
+        tikz_code = to_tikz(fig_dict)
+        self.assertIn(r"\draw[fill={rgb,255:red,255;green,127;blue,14}, fill opacity=0.25, draw={rgb,255:red,255;green,127;blue,14}, draw opacity=0.25, line width=2pt] (axis cs:-1, -1) rectangle (axis cs:-0.25, 1);", tikz_code)
+        self.assertIn(r"\draw[fill={rgb,255:red,0;green,0;blue,255}, draw={rgb,255:red,0;green,0;blue,0}, line width=1pt] (axis cs:1, 1) circle [x radius=1, y radius=1];", tikz_code)
+        self.assertIn(r"\draw[draw={rgb,255:red,255;green,0;blue,0}, line width=1.5pt, dashed] (axis cs:0, 0) -- (axis cs:10, 10);", tikz_code)
+        self.assertIn(r"\draw[fill={rgb,255:red,0;green,128;blue,0}] (axis cs:0, 0) -- (axis cs:5, 5) -- cycle;", tikz_code)
+
 
 if __name__ == "__main__":
     unittest.main()
+
 
 
