@@ -22,11 +22,11 @@ def format_point(x: Any, y: Any, xref: str = "x", yref: str = "y") -> str:
     if is_x_paper and is_y_paper:
         return f"(rel axis cs:{x_str}, {y_str})"
     elif is_x_paper:
-        return f"({{rel axis cs:{x_str},0}} |- {{axis cs:0,{y_str}}})"
+        return f"({{rel axis cs:{x_str},0}} |- {{0,{y_str}}})"
     elif is_y_paper:
-        return f"({{axis cs:{x_str},0}} |- {{rel axis cs:0,{y_str}}})"
+        return f"({{0,{x_str}}} |- {{rel axis cs:0,{y_str}}})"
     else:
-        return f"(axis cs:{x_str}, {y_str})"
+        return f"({x_str}, {y_str})"
 
 
 def parse_svg_path_to_tikz(path_str: str, xref: str = "x", yref: str = "y") -> Optional[str]:

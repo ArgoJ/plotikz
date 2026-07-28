@@ -256,7 +256,7 @@ class TestPlotikzConverter(unittest.TestCase):
         )
         tikz_code = to_tikz(fig, standalone=True)
         self.assertIn("const plot", tikz_code)
-        self.assertIn(r"\node[font=\small, fill=yellow!30, draw=black!70, rounded corners, anchor=west] at (axis cs:2.5, 18) {Optimal Point};", tikz_code)
+        self.assertIn(r"\node[font=\small, fill=yellow!30, draw=black!70, rounded corners, anchor=west] at (2.5, 18) {Optimal Point};", tikz_code)
 
 
     def test_colorbar_ticks_kwarg(self):
@@ -303,10 +303,10 @@ class TestPlotikzConverter(unittest.TestCase):
         }
         tikz_code = to_tikz(fig_dict)
         self.assertIn(r"\definecolor{shapeColor1}{RGB}{255,127,14}", tikz_code)
-        self.assertIn(r"\draw[fill=shapeColor1, fill opacity=0.25, draw=shapeColor1, draw opacity=0.25, line width=2pt] (axis cs:-1, -1) rectangle (axis cs:-0.25, 1);", tikz_code)
-        self.assertIn(r"\draw[fill=blue, draw=black, line width=1pt] (axis cs:1, 1) circle [x radius=1, y radius=1];", tikz_code)
-        self.assertIn(r"\draw[draw=red, line width=1.5pt, dashed] (axis cs:0, 0) -- (axis cs:10, 10);", tikz_code)
-        self.assertIn(r"\draw[fill=green] (axis cs:0, 0) -- (axis cs:5, 5) -- cycle;", tikz_code)
+        self.assertIn(r"\draw[fill=shapeColor1, fill opacity=0.25, draw=shapeColor1, draw opacity=0.25, line width=2pt] (-1, -1) rectangle (-0.25, 1);", tikz_code)
+        self.assertIn(r"\draw[fill=blue, draw=black, line width=1pt] (1, 1) circle [x radius=1, y radius=1];", tikz_code)
+        self.assertIn(r"\draw[draw=red, line width=1.5pt, dashed] (0, 0) -- (10, 10);", tikz_code)
+        self.assertIn(r"\draw[fill=green] (0, 0) -- (5, 5) -- cycle;", tikz_code)
 
 
 if __name__ == "__main__":

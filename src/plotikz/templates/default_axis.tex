@@ -49,7 +49,7 @@
 <% endif %>
 <% if block.annotations %>
 <% for ann in block.annotations %>
-    \node[<< ann.style >>] at (axis cs:<< ann.x >>, << ann.y >>) {<< ann.text >>};
+    \node[<< ann.style >>] at (<< ann.x >>, << ann.y >>) {<< ann.text >>};
 <% endfor %>
 <% endif %>
 \end{axis}
@@ -95,7 +95,7 @@
 <% endif %>
 <% if annotations %>
 <% for ann in annotations %>
-    \node[<< ann.style >>] at (axis cs:<< ann.x >>, << ann.y >>) {<< ann.text >>};
+    \node[<< ann.style >>] at (<< ann.x >>, << ann.y >>) {<< ann.text >>};
 <% endfor %>
 <% endif %>
 \end{axis}

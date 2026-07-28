@@ -190,6 +190,26 @@ class PlotlyToTikz:
             return base_dir, base_name
         return "", "data"
 
+    @staticmethod
+    def _is_trace_empty(trace_info: Dict[str, Any]) -> bool:
+        """Check if trace has no coordinates or graphics commands to plot."""
+        if trace_info.get("plot_code") or trace_info.get("extra_tables") or trace_info.get("bg_cmd"):
+            return False
+
+        data_type = trace_info.get("data_type")
+        if data_type == "table_macro":
+            content = trace_info.get("table_content", "").strip()
+            lines = content.splitlines() if content else []
+            return len(lines) <= 1
+        elif data_type == "tsv":
+            content = trace_info.get("tsv_content", "").strip()
+            lines = content.splitlines() if content else []
+            return len(lines) <= 1
+        elif data_type == "inline":
+            return not bool(trace_info.get("inline_coords", "").strip())
+
+        return False
+
     def _sort_traces_by_layer(self, processed_traces: List[Dict[str, Any]]) -> None:
         """Ensure background graphics (e.g. \\addplot graphics) draw first."""
         def _sort_key(t):
@@ -245,6 +265,9 @@ class PlotlyToTikz:
                         tsv_threshold=tsv_threshold,
                         tsv_prefix=tsv_prefix,
                     )
+
+            if self._is_trace_empty(trace_info):
+                continue
 
             extra_packages.update(trace_info.get("packages", set()))
             pgfplots_libraries.update(trace_info.get("libraries", set()))
