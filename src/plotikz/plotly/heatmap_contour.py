@@ -48,6 +48,10 @@ def build_heatmap_contour_options(
         options.append("enlargelimits=false")
     if not any("axis on top" in opt for opt in options):
         options.append("axis on top")
+    if not any(opt.startswith("tick style=") for opt in options):
+        options.append("tick style={draw=black}")
+    if not any(opt.startswith("ticklabel style=") for opt in options):
+        options.append("ticklabel style={color=black}")
 
     for t in traces:
         raw_t = t.get("raw_trace") or t
@@ -73,7 +77,7 @@ def build_heatmap_contour_options(
             if not any("colorbar style" in opt for opt in options):
                 ticks_nice = get_nice_ticks(z_min, z_max, max_ticks=max(1, colorbar_ticks))
                 ticks_str = ",".join([f"{v:g}" for v in ticks_nice])
-                options.append(f"colorbar style={{ytick={{{ticks_str}}}}}")
+                options.append(f"colorbar style={{ytick={{{ticks_str}}}, ytick style={{draw=black}}, yticklabel style={{color=black}}}}")
 
         if t_type == "heatmap":
             raw_z = _to_list(raw_t.get("z", []))
@@ -84,6 +88,9 @@ def build_heatmap_contour_options(
         if cm_opt and not any("colormap" in opt for opt in options):
             options.append(cm_opt)
         break
+
+    if not any("colorbar style" in opt for opt in options):
+        options.append("colorbar style={ytick style={draw=black}, yticklabel style={color=black}}")
 
 
 def add_heatmap_halfcell_bounds(options: List[str], t: Dict[str, Any], raw_z: List[Any]) -> None:
