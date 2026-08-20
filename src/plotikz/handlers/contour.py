@@ -53,6 +53,7 @@ class ContourHandler(TraceHandler):
     ) -> Dict[str, Any]:
         prefix = tsv_prefix or "data"
         colorbar_ticks = kwargs.get("colorbar_ticks", 5)
+        color_registry = kwargs.get("color_registry")
         raw_z = self._to_list(trace.get("z", []))
         raw_x = self._to_list(trace.get("x"))
         raw_y = self._to_list(trace.get("y"))
@@ -61,37 +62,57 @@ class ContourHandler(TraceHandler):
         num_rows = len(grid_z)
         num_cols = len(grid_z[0]) if num_rows > 0 else 0
 
+        if num_rows == 0 or num_cols == 0:
+            return {
+                "plot_cmd": "",
+                "plot_code": "",
+                "bg_cmd": None,
+                "options": [],
+                "options_str": "",
+                "data_type": "plot_code",
+                "inline_coords": "",
+                "tsv_filename": "",
+                "tsv_content": "",
+                "legend_entry": None,
+                "packages": self.packages,
+                "libraries": self.libraries,
+                "extra_tables": [],
+                "x_col": "x",
+                "y_col": "y",
+            }
+
         x_min = raw_x[0] if raw_x and len(raw_x) > 0 else 1
         x_max = raw_x[-1] if raw_x and len(raw_x) > 0 else (num_cols if num_cols > 0 else 1)
         y_min = raw_y[0] if raw_y and len(raw_y) > 0 else 1
         y_max = raw_y[-1] if raw_y and len(raw_y) > 0 else (num_rows if num_rows > 0 else 1)
 
-        png_filename = f"{prefix}_contour_{trace_index}.png"
-        png_filepath = os.path.join(base_dir, png_filename) if base_dir else png_filename
-        if base_dir:
-            os.makedirs(base_dir, exist_ok=True)
-
         contours_cfg = trace.get("contours", {})
+        coloring = contours_cfg.get("coloring", "fill")
         is_constraint = contours_cfg.get("type") == "constraint"
         raw_name = trace.get("name") or ("ROA" if is_constraint else "Contour")
 
-        extra_tables = []
-        bg_cmd = None
-
-        if num_rows > 0 and num_cols > 0:
-            z_arr = np.array([[v if v is not None else 0 for v in row] for row in grid_z], dtype=float)
-            x_arr = np.array(raw_x) if raw_x and len(raw_x) == num_cols else np.arange(1, num_cols + 1)
-            y_arr = np.array(raw_y) if raw_y and len(raw_y) == num_rows else np.arange(1, num_rows + 1)
-            X, Y = np.meshgrid(x_arr, y_arr)
-
-            if is_constraint:
-                extra_tables = self._generate_constraint_contour(X, Y, z_arr, trace, raw_name)
-            else:
-                bg_cmd, extra_tables = self._generate_full_contour(
-                    X, Y, z_arr, trace, raw_name, png_filepath, png_filename, (x_min, x_max, y_min, y_max), colorbar_ticks=colorbar_ticks
-                )
-
+        has_bg = (coloring not in ("none", "lines")) and (not is_constraint)
         legend_entry = self._extract_legend_entry(trace, default_showlegend=False)
+
+        z_arr = np.array([[v if v is not None else 0 for v in row] for row in grid_z], dtype=float)
+        x_arr = np.array(raw_x) if raw_x and len(raw_x) == num_cols else np.arange(1, num_cols + 1)
+        y_arr = np.array(raw_y) if raw_y and len(raw_y) == num_rows else np.arange(1, num_rows + 1)
+        X, Y = np.meshgrid(x_arr, y_arr)
+
+        bg_cmd = None
+        if has_bg:
+            png_filename = f"{prefix}_contour_{trace_index}.png"
+            png_filepath = os.path.join(base_dir, png_filename) if base_dir else png_filename
+            if base_dir:
+                os.makedirs(base_dir, exist_ok=True)
+            bg_cmd = self._generate_background_image(
+                X, Y, z_arr, trace, png_filepath, png_filename, (x_min, x_max, y_min, y_max)
+            )
+
+        levels = self._extract_contour_levels(contours_cfg, z_arr, colorbar_ticks=colorbar_ticks)
+        extra_tables = self._generate_contour_lines(
+            X, Y, z_arr, trace, raw_name, levels, legend_entry=legend_entry, color_registry=color_registry
+        )
 
         return {
             "plot_cmd": "",
@@ -134,67 +155,53 @@ class ContourHandler(TraceHandler):
                 grid_z.append([clean_val(v) for v in row_list])
         return grid_z
 
-    def _generate_constraint_contour(
-        self, X: np.ndarray, Y: np.ndarray, z_arr: np.ndarray, trace: Dict[str, Any], raw_name: str
-    ) -> List[Dict[str, Any]]:
-        """Generate table entries for single level constraint contour lines (e.g. ROA boundary)."""
-        extra_tables = []
-        contours_cfg = trace.get("contours", {})
-        constraint_value = contours_cfg.get("value")
-        line_cfg = trace.get("line", {})
-        line_color = line_cfg.get("color", "black")
-        line_width = line_cfg.get("width", 1.5)
+    def _extract_contour_levels(
+        self, contours_cfg: Dict[str, Any], z_arr: np.ndarray, colorbar_ticks: int = 5
+    ) -> List[float]:
+        """Extract explicit or calculated contour levels from contour config."""
+        is_constraint = contours_cfg.get("type") == "constraint"
+        if is_constraint:
+            val = contours_cfg.get("value")
+            if val is not None:
+                if isinstance(val, (int, float)):
+                    return [float(val)]
+                elif isinstance(val, (list, tuple)):
+                    return [float(v) for v in val]
+            return []
 
-        tikz_dash = self._extract_line_dash(line_cfg) or "solid"
-        levels = [constraint_value] if constraint_value is not None else []
+        if contours_cfg.get("start") is not None:
+            start = float(contours_cfg["start"])
+            end = float(contours_cfg.get("end", start))
+            size = float(contours_cfg.get("size", 1.0)) if contours_cfg.get("size") else 1.0
+            if abs(start - end) < 1e-9 or start == end or size <= 0:
+                return [start]
+            num_steps = int(np.floor((end - start) / size + 1e-6)) + 1
+            return [start + i * size for i in range(num_steps)]
 
-        if levels:
-            fig_c, ax_c = plt.subplots()
-            try:
-                cs = ax_c.contour(X, Y, z_arr, levels=levels)
-                if hasattr(cs, "allsegs"):
-                    col_str, _ = format_color(line_color)
-                    col_str = col_str or "color=red"
-                    seg_idx = 0
-                    for level_segs in cs.allsegs:
-                        for seg in level_segs:
-                            if len(seg) > 0:
-                                table_lines = ["x y"] + [f"{x:.4f} {y:.4f}" for x, y in seg]
-                                hint = f"{raw_name}Constraint{seg_idx}" if seg_idx > 0 else f"{raw_name}Constraint"
-                                extra_tables.append({
-                                    "name_hint": hint,
-                                    "table_content": "\n".join(table_lines),
-                                    "plot_cmd": f"\\addplot+[mark=none, {col_str}, {tikz_dash}, line width={line_width}pt]"
-                                })
-                                seg_idx += 1
-            except Exception:
-                pass
-            finally:
-                plt.close(fig_c)
+        if contours_cfg.get("value") is not None:
+            return [float(contours_cfg["value"])]
 
-        return extra_tables
+        if contours_cfg.get("showlines") is False:
+            return []
 
-    def _generate_full_contour(
+        z_min = float(np.min(z_arr))
+        z_max = float(np.max(z_arr))
+        return get_nice_ticks(z_min, z_max, max_ticks=max(1, colorbar_ticks))
+
+    def _generate_background_image(
         self,
         X: np.ndarray,
         Y: np.ndarray,
         z_arr: np.ndarray,
         trace: Dict[str, Any],
-        raw_name: str,
         png_filepath: str,
         png_filename: str,
         bounds: Tuple[float, float, float, float],
-        colorbar_ticks: int = 5,
-    ) -> Tuple[str, List[Dict[str, Any]]]:
-        """Generate smooth background PNG and level line macro tables for a full contour plot."""
+    ) -> str:
+        """Render smooth 2D colormap background as a PNG image."""
         x_min, x_max, y_min, y_max = bounds
-        extra_tables = []
-
         cmap = self._get_matplotlib_colormap(trace.get("colorscale"))
-        z_min = float(np.min(z_arr))
-        z_max = float(np.max(z_arr))
 
-        # Render background PNG
         fig, ax = plt.subplots(figsize=(6, 6))
         ax.axis("off")
         fig.subplots_adjust(left=0, right=1, bottom=0, top=1)
@@ -204,32 +211,82 @@ class ContourHandler(TraceHandler):
         fig.savefig(png_filepath, bbox_inches="tight", pad_inches=0, dpi=300)
         plt.close(fig)
 
-        bg_cmd = f"\\addplot graphics [xmin={x_min}, xmax={x_max}, ymin={y_min}, ymax={y_max}] {{{png_filename}}};"
+        return f"\\addplot [forget plot] graphics [xmin={x_min}, xmax={x_max}, ymin={y_min}, ymax={y_max}] {{{png_filename}}};"
 
-        # Extract contour level lines matching ticks
-        ticks = get_nice_ticks(z_min, z_max, max_ticks=max(1, colorbar_ticks))
+    def _generate_contour_lines(
+        self,
+        X: np.ndarray,
+        Y: np.ndarray,
+        z_arr: np.ndarray,
+        trace: Dict[str, Any],
+        raw_name: str,
+        levels: List[float],
+        legend_entry: Optional[str] = None,
+        color_registry: Any = None,
+    ) -> List[Dict[str, Any]]:
+        """Generate table entries for contour lines matching levels."""
+        if not levels:
+            return []
+
+        line_cfg = trace.get("line", {})
+        line_color = line_cfg.get("color")
+        if line_color:
+            col_str, _ = format_color(line_color, color_registry=color_registry)
+            col_str = col_str or "color=black"
+        else:
+            col_str = "color=black"
+
+        dash_str = self._extract_line_dash(line_cfg) or "solid"
+        line_width = line_cfg.get("width")
+        if line_width is not None and isinstance(line_width, (int, float)):
+            width_str = f"line width={line_width:g}pt"
+        else:
+            width_str = "line width=0.8pt"
+
+        trace_opacity = trace.get("opacity")
+        opacity_str = (
+            f", opacity={trace_opacity:g}"
+            if (trace_opacity is not None and isinstance(trace_opacity, (int, float)) and trace_opacity < 1.0)
+            else ""
+        )
+
+        base_opts = f"mark=none, {col_str}, {dash_str}, {width_str}{opacity_str}"
+
+        # Extract contour segments with matplotlib
         fig_c, ax_c = plt.subplots()
+        extracted_segments = []
         try:
-            cs = ax_c.contour(X, Y, z_arr, levels=ticks)
+            cs = ax_c.contour(X, Y, z_arr, levels=levels)
+            if hasattr(cs, "allsegs"):
+                for level_segs in cs.allsegs:
+                    for seg in level_segs:
+                        if len(seg) > 0:
+                            extracted_segments.append(seg)
         except Exception:
-            cs = None
+            pass
+        finally:
+            plt.close(fig_c)
 
-        if cs and hasattr(cs, "allsegs"):
-            seg_idx = 0
-            for level_segs in cs.allsegs:
-                for seg in level_segs:
-                    if len(seg) > 0:
-                        table_lines = ["x y"] + [f"{x:.4f} {y:.4f}" for x, y in seg]
-                        hint = f"{raw_name}Line{seg_idx}"
-                        extra_tables.append({
-                            "name_hint": hint,
-                            "table_content": "\n".join(table_lines),
-                            "plot_cmd": "\\addplot+[mark=none, color=black, solid, line width=0.8pt]"
-                        })
-                        seg_idx += 1
-        plt.close(fig_c)
+        extra_tables = []
+        num_segs = len(extracted_segments)
+        for seg_idx, seg in enumerate(extracted_segments):
+            table_lines = ["x y"] + [f"{x:.4f} {y:.4f}" for x, y in seg]
+            hint = f"{raw_name}Line{seg_idx}" if seg_idx > 0 else f"{raw_name}Line"
 
-        return bg_cmd, extra_tables
+            # In PGFPlots, if trace has no legend, forget plot for all segments.
+            # If trace has a legend, forget plot for all segments except the last one.
+            if legend_entry is None or seg_idx < num_segs - 1:
+                plot_cmd = f"\\addplot+[{base_opts}, forget plot]"
+            else:
+                plot_cmd = f"\\addplot+[{base_opts}]"
+
+            extra_tables.append({
+                "name_hint": hint,
+                "table_content": "\n".join(table_lines),
+                "plot_cmd": plot_cmd,
+            })
+
+        return extra_tables
 
     @staticmethod
     def _get_matplotlib_colormap(cs_val: Any) -> mcolors.Colormap:

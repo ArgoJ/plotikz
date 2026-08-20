@@ -25,6 +25,8 @@ class GenericHandler(TraceHandler):
             coords, trace_index, tsv_threshold, tsv_prefix, default_data_type="inline"
         )
         legend_entry = self._extract_legend_entry(trace, default_showlegend=True)
+        if legend_entry is None:
+            options.append("forget plot")
 
         return {
             "plot_cmd": r"\addplot+",

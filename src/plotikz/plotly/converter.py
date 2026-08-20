@@ -214,7 +214,7 @@ class PlotlyToTikz:
         """Ensure background graphics (e.g. \\addplot graphics) draw first."""
         def _sort_key(t):
             code = t.get("plot_code", "")
-            return 0 if "\\addplot graphics" in code else 1
+            return 0 if "graphics" in code else 1
 
         processed_traces.sort(key=_sort_key)
 

@@ -59,9 +59,13 @@ def build_heatmap_contour_options(
         if not isinstance(raw_t, dict) or t_type not in ("heatmap", "contour"):
             continue
 
-        # Skip constraint contours (e.g. ROA boundary) when configuring colorbar range
+        # Skip constraint or line-only contours (e.g. ROA boundary) when configuring colorbar range
         contours_cfg = raw_t.get("contours", {})
-        if t_type == "contour" and contours_cfg.get("type") == "constraint":
+        if t_type == "contour" and (
+            contours_cfg.get("type") == "constraint"
+            or contours_cfg.get("coloring") in ("none", "lines")
+            or (raw_t.get("showscale") is False and raw_t.get("colorscale") is None)
+        ):
             continue
 
         z_vals = extract_z_values(raw_t.get("z", []))
